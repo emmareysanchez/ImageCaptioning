@@ -1,0 +1,14 @@
+# Ignore image files
+*.jpg
+*.png
+
+# Ignore text files
+*.txt
+!requirements.txt
+
+# Ignore Python cache files
+__pycache__/
+*.pyc
+
+# Ignore data folder
+data/
