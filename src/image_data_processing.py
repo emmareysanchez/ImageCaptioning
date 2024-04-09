@@ -27,7 +27,6 @@ from PIL import Image
 from torchvision import transforms
 
 
-
 def download_and_prepare_flickr8k_dataset(path: str) -> None:
     """
     Download and prepare the Flickr8k dataset from Kaggle and process it.
@@ -38,111 +37,57 @@ def download_and_prepare_flickr8k_dataset(path: str) -> None:
 
     # Kaggle dataset identifier
     dataset_identifier: str = "adityajn105/flickr8k"
-
+    print("antes")
     # Make sure the kaggle.json file is set up and permissions are correct
     kaggle.api.authenticate()
+    print("despues")
 
     # Create path if it doesn't exist
     if not os.path.exists(path):
         os.makedirs(path)
-    
-    # Download dataset
-    kaggle.api.dataset_download_files(dataset_identifier, path=path, unzip=True)
-    
-    # Assuming the Flickr8k dataset structure
+
     dataset_path = f"{path}/flickr8k"
+    # Download dataset
+    kaggle.api.dataset_download_files(dataset_identifier, path=dataset_path, unzip=True)
+
+    print("hola")
 
     # Prepare directories for processed data
-    if not os.path.exists(f"{path}/train"):
-        os.makedirs(f"{path}/train")
-    if not os.path.exists(f"{path}/val"):
-        os.makedirs(f"{path}/val")
+    if not os.path.exists(f"{dataset_path}/train"):
+        os.makedirs(f"{dataset_path}/train")
+    if not os.path.exists(f"{dataset_path}/val"):
+        os.makedirs(f"{dataset_path}/val")
 
     # Define resize transformation
     transform = transforms.Resize((224, 224))
 
+    images_list = os.listdir(f"{dataset_path}/Images")
+    # Split into train and validation
+    # 80% train, 20% validation
+    test_images = images_list[int(len(images_list) * 0.8) :]
+    train_images = images_list[: int(len(images_list) * 0.8)]
+    # Of the train images, 80% will be used for training and 20% for validation
+    val_images = train_images[int(len(train_images) * 0.8) :]
+    train_images = train_images[: int(len(train_images) * 0.8)]
     # Process and save images
-    list_splits = ("train", "val")
-    for split in list_splits:
+    list_splits = ["train", "val", "test"]
+    list_class_dirs = [train_images, val_images, test_images]
+    for i in range(len(list_splits)):
+        split = list_splits[i]
+        list_images = list_class_dirs[i]
         # Adjust according to the actual Flickr8k structure on disk
-        images_path = f"{dataset_path}/Images/{split}"
-        list_class_dirs = os.listdir(images_path)
-        
-        for class_dir in list_class_dirs:
-            list_images = os.listdir(f"{images_path}/{class_dir}")
-            for image_file in list_images:
-                image_path = f"{images_path}/{class_dir}/{image_file}"
-                image = Image.open(image_path).convert('RGB')
-                image = transform(image)
-                image.save(f"{path}/{split}/{class_dir}_{image_file}")
+        images_path = f"{dataset_path}/Images"
 
-    # Optional: clean up original downloaded files if desired
-    # Be cautious with this, you might want to keep the original dataset
-    # shutil.rmtree(dataset_path)
+        for image_file in list_images:
+            image_path = f"{images_path}/{image_file}"
+            image = Image.open(image_path).convert("RGB")
+            image = transform(image)
+            image.save(f"{dataset_path}/{split}/{image_file}")
+
+    shutil.rmtree(f"{dataset_path}/Images")
 
     print("Dataset processed and saved.")
 
-def download_and_prepare_mscoco_dataset(
-        path: str,
-        start_token: str = "-") -> None:
-        
 
-    # Use the function
-    path = "path/to/your/dataset/directory"
-    download_and_prepare_flickr8k_dataset(path)
-
-
-
-    def download_data(path: str) -> None:
-        """
-        This function downloads the data from internet.
-
-        Args:
-            path: path to dave the data.
-        """
-
-        # define paths
-        url: str = "https://s3.amazonaws.com/fast-ai-imageclas/imagenette2.tgz"
-        target_path: str = f"{path}/imagenette2.tgz"
-
-        # download tar file
-        response: Response = requests.get(url, stream=True)
-        if response.status_code == 200:
-            with open(target_path, "wb") as f:
-                f.write(response.raw.read())
-
-        # extract tar file
-        tar_file: TarFile = tarfile.open(target_path)
-        tar_file.extractall(path)
-        tar_file.close()
-
-        # create final save directories
-        os.makedirs(f"{path}/train")
-        os.makedirs(f"{path}/val")
-
-        # define resize transformation
-        transform = transforms.Resize((224, 224))
-
-        # loop for saving processed data
-        list_splits: tuple[str, str] = ("train", "val")
-        for i in range(len(list_splits)):
-            list_class_dirs = os.listdir(f"{path}/imagenette2/{list_splits[i]}")
-            for j in range(len(list_class_dirs)):
-                list_dirs = os.listdir(
-                    f"{path}/imagenette2/{list_splits[i]}/{list_class_dirs[j]}"
-                )
-                for k in range(len(list_dirs)):
-                    image = Image.open(
-                        f"{path}/imagenette2/{list_splits[i]}/"
-                        f"{list_class_dirs[j]}/{list_dirs[k]}"
-                    )
-                    image = transform(image)
-                    if image.im.bands == 3:
-                        image.save(f"{path}/{list_splits[i]}/{j}_{k}.jpg")
-
-        # delete other files
-        os.remove(target_path)
-        shutil.rmtree(f"{path}/imagenette2")
-
-        return None
-
+if __name__ == "__main__":
+    download_and_prepare_flickr8k_dataset("data")
