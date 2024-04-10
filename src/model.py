@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 
-from encoder import Encoder
-from decoder import Decoder
+from encoder import ModifiedVGG19
+from decoder import RNN
 
 class MyModel(nn.Module):
     def __init__(self, encoder_params, decoder_params):
@@ -14,8 +14,8 @@ class MyModel(nn.Module):
             decoder_params (dict): Un diccionario con los parámetros necesarios para inicializar el decoder.
         """
         super(MyModel, self).__init__()
-        self.encoder = Encoder(**encoder_params)
-        self.decoder = Decoder(**decoder_params)
+        self.encoder = ModifiedVGG19(**encoder_params)
+        self.decoder = RNN(**decoder_params)
 
     def forward(self, images, captions, caption_lengths):
         """
