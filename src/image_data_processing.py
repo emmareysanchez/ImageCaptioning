@@ -37,10 +37,8 @@ def download_and_prepare_flickr8k_dataset(path: str) -> None:
 
     # Kaggle dataset identifier
     dataset_identifier: str = "adityajn105/flickr8k"
-    print("antes")
     # Make sure the kaggle.json file is set up and permissions are correct
     kaggle.api.authenticate()
-    print("despues")
 
     # Create path if it doesn't exist
     if not os.path.exists(path):
@@ -50,13 +48,13 @@ def download_and_prepare_flickr8k_dataset(path: str) -> None:
     # Download dataset
     kaggle.api.dataset_download_files(dataset_identifier, path=dataset_path, unzip=True)
 
-    print("hola")
-
     # Prepare directories for processed data
     if not os.path.exists(f"{dataset_path}/train"):
         os.makedirs(f"{dataset_path}/train")
     if not os.path.exists(f"{dataset_path}/val"):
         os.makedirs(f"{dataset_path}/val")
+    if not os.path.exists(f"{dataset_path}/test"):
+        os.makedirs(f"{dataset_path}/test")
 
     # Define resize transformation
     transform = transforms.Resize((224, 224))
@@ -89,5 +87,58 @@ def download_and_prepare_flickr8k_dataset(path: str) -> None:
     print("Dataset processed and saved.")
 
 
+def download_and_prepare_mscoco_dataset(path: str) -> None:
+    """
+    Download and prepare the MSCOCO dataset from Kaggle and process it.
+
+    Args:
+        path: Path to save the processed data.
+    """
+
+    # Kaggle dataset identifier
+    dataset_identifier: str = "awsaf49/coco-2017-dataset"
+    print("antes")
+    # Make sure the kaggle.json file is set up and permissions are correct
+    kaggle.api.authenticate()
+    print("despues")
+
+    # Create path if it doesn't exist
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+    dataset_path = f"{path}"
+    # Download dataset
+    kaggle.api.dataset_download_files(dataset_identifier, path=dataset_path, unzip=True)
+
+    # change name of the folder from coco2017 to mscoco:
+    os.rename(f"{dataset_path}/coco2017", f"{dataset_path}/mscoco")
+    os.rename(f"{dataset_path}/mscoco/train2017", f"{dataset_path}/mscoco/train")
+    os.rename(f"{dataset_path}/mscoco/val2017", f"{dataset_path}/mscoco/val")
+    os.rename(f"{dataset_path}/mscoco/test2017", f"{dataset_path}/mscoco/test")
+
+    # Define resize transformation
+    transform = transforms.Resize((224, 224))
+
+    # transform images
+    list_splits = ["train", "val", "test"]
+    for split in list_splits:
+        images_path = f"{dataset_path}/mscoco/{split}"
+        images_list = os.listdir(images_path)
+        for image_file in images_list:
+            image_path = f"{images_path}/{image_file}"
+            image = Image.open(image_path).convert("RGB")
+            image = transform(image)
+            image.save(f"{dataset_path}/mscoco/{split}/{image_file}")
+
+    print("Dataset processed and saved.")
+
+
 if __name__ == "__main__":
-    download_and_prepare_flickr8k_dataset("data")
+    # si flickr8k no esta descargado, descargarlo
+    if not os.path.exists("data/flickr8k"):
+        download_and_prepare_flickr8k_dataset("data")
+        print("Flickr8k dataset processed and saved.")
+    # si mscoco no esta descargado, descargarlo
+    if not os.path.exists("data/mscoco"):
+        download_and_prepare_mscoco_dataset("data")
+        print("MSCOCO dataset processed and saved.")
