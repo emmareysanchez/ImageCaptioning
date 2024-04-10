@@ -110,25 +110,27 @@ def download_and_prepare_mscoco_dataset(path: str) -> None:
     # Download dataset
     kaggle.api.dataset_download_files(dataset_identifier, path=dataset_path, unzip=True)
 
+    # TODO: mscoco folders are not named correctly, fix this
+
     # change name of the folder from coco2017 to mscoco:
-    os.rename(f"{dataset_path}/coco2017", f"{dataset_path}/mscoco")
-    os.rename(f"{dataset_path}/mscoco/train2017", f"{dataset_path}/mscoco/train")
-    os.rename(f"{dataset_path}/mscoco/val2017", f"{dataset_path}/mscoco/val")
-    os.rename(f"{dataset_path}/mscoco/test2017", f"{dataset_path}/mscoco/test")
+    # os.rename(f"{dataset_path}/coco2017", f"{dataset_path}/mscoco")
+    # os.rename(f"{dataset_path}/mscoco/train2017", f"{dataset_path}/mscoco/train")
+    # os.rename(f"{dataset_path}/mscoco/val2017", f"{dataset_path}/mscoco/val")
+    # os.rename(f"{dataset_path}/mscoco/test2017", f"{dataset_path}/mscoco/test")
 
-    # Define resize transformation
-    transform = transforms.Resize((224, 224))
+    # # Define resize transformation
+    # transform = transforms.Resize((224, 224))
 
-    # transform images
-    list_splits = ["train", "val", "test"]
-    for split in list_splits:
-        images_path = f"{dataset_path}/mscoco/{split}"
-        images_list = os.listdir(images_path)
-        for image_file in images_list:
-            image_path = f"{images_path}/{image_file}"
-            image = Image.open(image_path).convert("RGB")
-            image = transform(image)
-            image.save(f"{dataset_path}/mscoco/{split}/{image_file}")
+    # # transform images
+    # list_splits = ["train", "val", "test"]
+    # for split in list_splits:
+    #     images_path = f"{dataset_path}/mscoco/{split}"
+    #     images_list = os.listdir(images_path)
+    #     for image_file in images_list:
+    #         image_path = f"{images_path}/{image_file}"
+    #         image = Image.open(image_path).convert("RGB")
+    #         image = transform(image)
+    #         image.save(f"{dataset_path}/mscoco/{split}/{image_file}")
 
     print("Dataset processed and saved.")
 
@@ -139,6 +141,6 @@ if __name__ == "__main__":
         download_and_prepare_flickr8k_dataset("data")
         print("Flickr8k dataset processed and saved.")
     # si mscoco no esta descargado, descargarlo
-    if not os.path.exists("data/mscoco"):
-        download_and_prepare_mscoco_dataset("data")
-        print("MSCOCO dataset processed and saved.")
+    # if not os.path.exists("data/mscoco"):
+    #     download_and_prepare_mscoco_dataset("data")
+    #     print("MSCOCO dataset processed and saved.")

@@ -1,4 +1,6 @@
 # deep learning libraries
+from tkinter import Image
+from matplotlib import pyplot as plt
 import torch
 import numpy as np
 from torch.jit import RecursiveScriptModule
@@ -12,48 +14,52 @@ from typing import List, Dict
 
 # Libraries for evaluation
 from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
-from rouge import Rouge 
+from rouge import Rouge
 from pycocoevalcap.cider.cider import Cider
 from nltk.translate.meteor_score import meteor_score
 
 # Libraries for data processing
 from torch.utils.data import DataLoader
 from src.image_data_processing import download_and_prepare_flickr8k_dataset
-from src.text_data_processing import load_and_process_captions_flickr8k, create_lookup_tables
+from src.text_data_processing import (
+    load_and_process_captions_flickr8k,
+    create_lookup_tables,
+)
 from src.data import ImageAndCaptionsDataset
+
 
 def tokenize(text: str) -> str:
 
     # Replace punctuation with tokens so we can use them in our model
-    text = text.replace('.', ' <PERIOD> ')
-    text = text.replace(',', ' <COMMA> ')
-    text = text.replace('"', ' <QUOTATION_MARK> ')
-    text = text.replace(';', ' <SEMICOLON> ')
-    text = text.replace('!', ' <EXCLAMATION_MARK> ')
-    text = text.replace('?', ' <QUESTION_MARK> ')
-    text = text.replace('(', ' <LEFT_PAREN> ')
-    text = text.replace(')', ' <RIGHT_PAREN> ')
-    text = text.replace('--', ' <HYPHENS> ')
-    text = text.replace('?', ' <QUESTION_MARK> ')
-    text = text.replace(':', ' <COLON> ')
+    text = text.replace(".", " <PERIOD> ")
+    text = text.replace(",", " <COMMA> ")
+    text = text.replace('"', " <QUOTATION_MARK> ")
+    text = text.replace(";", " <SEMICOLON> ")
+    text = text.replace("!", " <EXCLAMATION_MARK> ")
+    text = text.replace("?", " <QUESTION_MARK> ")
+    text = text.replace("(", " <LEFT_PAREN> ")
+    text = text.replace(")", " <RIGHT_PAREN> ")
+    text = text.replace("--", " <HYPHENS> ")
+    text = text.replace("?", " <QUESTION_MARK> ")
+    text = text.replace(":", " <COLON> ")
 
     return text
 
 
 def untokenize(text: str) -> str:
-    
+
     # Replace punctuation with tokens so we can use them in our model
-    text = text.replace(' <PERIOD> ', '.')
-    text = text.replace(' <COMMA> ', ',')
-    text = text.replace(' <QUOTATION_MARK> ', '"')
-    text = text.replace(' <SEMICOLON> ', ';')
-    text = text.replace(' <EXCLAMATION_MARK> ', '!')
-    text = text.replace(' <QUESTION_MARK> ', '?')
-    text = text.replace(' <LEFT_PAREN> ', '(')
-    text = text.replace(' <RIGHT_PAREN> ', ')')
-    text = text.replace(' <HYPHENS> ', '--')
-    text = text.replace(' <QUESTION_MARK> ', '?')
-    text = text.replace(' <COLON> ', ':')
+    text = text.replace(" <PERIOD> ", ".")
+    text = text.replace(" <COMMA> ", ",")
+    text = text.replace(" <QUOTATION_MARK> ", '"')
+    text = text.replace(" <SEMICOLON> ", ";")
+    text = text.replace(" <EXCLAMATION_MARK> ", "!")
+    text = text.replace(" <QUESTION_MARK> ", "?")
+    text = text.replace(" <LEFT_PAREN> ", "(")
+    text = text.replace(" <RIGHT_PAREN> ", ")")
+    text = text.replace(" <HYPHENS> ", "--")
+    text = text.replace(" <QUESTION_MARK> ", "?")
+    text = text.replace(" <COLON> ", ":")
 
     return text
 
@@ -127,9 +133,9 @@ def set_seed(seed: int) -> None:
 def calculate_bleu(reference_captions: List[str], candidate_caption: str) -> float:
     """
     Calculate BLEU score for a single candidate caption against multiple reference captions.
-    
+
     Args:
-    - reference_captions: A list of lists of reference captions 
+    - reference_captions: A list of lists of reference captions
     - candidate_caption: A string of the candidate caption
     Returns:
     - BLEU score
@@ -144,11 +150,11 @@ def calculate_bleu(reference_captions: List[str], candidate_caption: str) -> flo
 def calculate_rouge(reference_captions: List[str], candidate_caption: str) -> float:
     """
     Calculate ROUGE score for a single candidate caption against multiple reference captions.
-    
+
     Args:
     - reference_captions: A list of reference captions
     - candidate_caption: The candidate caption as a string
-    
+
     Returns:
     - ROUGE score dictionary
     """
@@ -159,17 +165,17 @@ def calculate_rouge(reference_captions: List[str], candidate_caption: str) -> fl
     # We return the average ROUGE-L F1 score across all references.
 
     # Hay más rouges en el diccionario y se puede cambiar el valor de 'l' por '1', '2', '3'...
-    return sum([score['rouge-l']['f'] for score in scores]) / len(scores)
+    return sum([score["rouge-l"]["f"] for score in scores]) / len(scores)
 
 
 def calculate_cider(refs: Dict, hypo: Dict) -> float:
     """
     Calculate CIDEr score for a set of hypotheses against references.
-    
+
     Args:
     - refs: Dictionary of reference captions with image_id as keys and a list of captions as values.
     - hypo: Dictionary of hypothesis captions with image_id as keys and a single caption as value.
-    
+
     Returns:
     - CIDEr score
     """
@@ -197,7 +203,6 @@ def calculate_meteor(reference_captions: List[str], candidate_caption: str) -> f
     return sum(scores) / len(scores)
 
 
-
 def load_data(
     path: str,
     batch_size: int = 64,
@@ -205,11 +210,12 @@ def load_data(
     drop_last: bool = True,
     num_workers: int = 0,
 ) -> tuple[DataLoader, DataLoader, DataLoader, float, float]:
-    
 
     # load and preprocess data
     download_and_prepare_flickr8k_dataset(path)
-    captions_dict_train, captions_dict_val, captions_dict_test, word_list = load_and_process_captions_flickr8k(path)
+    captions_dict_train, captions_dict_val, captions_dict_test, word_list = (
+        load_and_process_captions_flickr8k(path)
+    )
 
     # Create lookup tables
     word_to_index, index_to_word = create_lookup_tables(word_list)
@@ -219,7 +225,9 @@ def load_data(
     test_path = f"{path}/test"
 
     # Create for training, test and validation datasets
-    train_dataset = ImageAndCaptionsDataset(train_path, captions_dict_train, word_to_index)
+    train_dataset = ImageAndCaptionsDataset(
+        train_path, captions_dict_train, word_to_index
+    )
     val_dataset = ImageAndCaptionsDataset(val_path, captions_dict_val, word_to_index)
     test_dataset = ImageAndCaptionsDataset(test_path, captions_dict_test, word_to_index)
 
@@ -247,3 +255,42 @@ def load_data(
     )
 
     return train_loader, val_loader, test_loader, word_to_index, index_to_word
+
+
+def save_images_with_captions(
+    path: str, model: RecursiveScriptModule, index_to_word: dict, num_images: int = 5
+) -> None:
+    """
+    This function saves images with their captions generated by the model.
+
+    Args:
+        path: path to the folder containing the images.
+        model: model to generate captions.
+        index_to_word: dictionary to convert indices to words.
+        num_images: number of images to save.
+    """
+
+    # Get the list of images
+    images = os.listdir(path)
+
+    # Select a random sample of images
+    images = random.sample(images, num_images)
+
+    # Iterate over the images
+    for image in images:
+
+        # Load the image
+        image_path = os.path.join(path, image)
+        img = Image.open(image_path)
+
+        # TODO: Implement the function generate_caption before
+        # # Generate the caption
+        # # caption = model.generate_caption(img)
+
+        # # Save the image with the caption
+        # plt.imshow(img)
+        # plt.title(caption)
+        # plt.savefig(f"results/{image}")
+        # plt.close()
+
+    return None
