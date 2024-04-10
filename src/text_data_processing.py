@@ -6,38 +6,83 @@ from src.data import MSCOCODataset
 import os
 import pandas as pd
 import json
+import shutil
 
 from src.utils import tokenize
 
 def organize_caption_flickr8k(path: str) -> None:
     """"
-    Organize the captions from the Flickr8k dataset into a single file.
+    Organize the captions from the Flickr8k dataset into JSON files for each set.
+
+    Args:
+        path (str): path where the data was downloaded.
+
     """
+    # FIXME: Remove the test set from the Flickr8k dataset here and in the image_data_processing.py file
+    # Open the captions.txt file as a DataFrame
     df_captions = pd.read_csv(os.path.join(path, 'captions.txt'), sep=',')
+
+    # Separate the images into train, validation and test sets
+    images_train = os.listdir(os.path.join(path, 'train'))
+    images_val = os.listdir(os.path.join(path, 'val'))
+    images_test = os.listdir(os.path.join(path, 'test'))
+
+    # Filter the captions for each set
+    df_captions_train = df_captions[df_captions['image'].isin(images_train)]
+    df_captions_val = df_captions[df_captions['image'].isin(images_val)]
+    df_captions_test = df_captions[df_captions['image'].isin(images_test)]
+
+    # Create JSON for each set
+    sets = {'train': df_captions_train, 'val': df_captions_val, 'test': df_captions_test}
+    for set_name, set_captions in sets.items():
+        # Group captions by image and convert to dictionary
+        image_captions = set_captions.groupby('image')['caption'].apply(list).to_dict()
+
+        # Write JSON file
+        with open(os.path.join(path, f'captions_{set_name}.json'), 'w') as json_file:
+            json.dump(image_captions, json_file, indent=4)
+    
+    # Remove the captions.txt file
+    os.remove(os.path.join(path, 'captions.txt'))
 
 
 def organize_caption_mscoco(path: str) -> None:
-    """"
-    Organize the captions from the MSCOCO dataset into a single file.
     """
-    df_captions = pd.read_csv(os.path.join(path, 'captions.txt'), sep=',')
+    Organize the captions from the MSCOCO dataset into JSON files for each set.
 
-    # Crear un archivo de texto con las rutas de las imágenes y sus respectivas etiquetas
-    with open(os.path.join(path, 'captions.txt'), 'w') as f:
-        for i in range(len(df_captions)):
-            f.write(df_captions.iloc[i, 0] + '\t' + df_captions.iloc[i, 1] + '\n')
-    '''"annotations": [
-        {
-            "image_id": 203564,
-            "id": 37,
-            "caption": "A bicycle replica with a clock as the front wheel."
-        },
-        {
-            "image_id": 322141,
-            "id": 49,
-            "caption": "A room with blue walls and a white sink and door."
-        },
-       ]'''
+    Args:
+        path (str): path where the data was downloaded.
+
+    """
+    path_in_dir = os.path.join(path, 'coco2017/annotations')
+
+    sets = {'train': os.path.join(path_in_dir, 'captions_train2017.json'),
+            'val': os.path.join(path_in_dir, 'captions_val2017.json')}
+    
+    for set_name, set_path in sets.items():
+        with open(set_path, 'r') as json_file:
+            json_data = json.load(json_file)
+
+        image_ids_to_filenames = {image['id']: image['file_name'] for image in json_data['images']}
+
+        image_captions = {}
+
+        for annotation in json_data['annotations']:
+            image_id = annotation['image_id']
+            caption = annotation['caption']
+            filename = image_ids_to_filenames.get(image_id)
+            if filename:
+                # Append caption to list of captions for the image (if the image exists
+                # in the dictionary, it appends the caption to the list, otherwise it
+                # creates a new list with the caption as the first element)
+                image_captions.setdefault(filename, []).append(caption)
+
+        with open(os.path.join(path, f'captions_{set_name}.json'), 'w') as json_file:
+            json.dump(image_captions, json_file, indent=4)
+        
+    # Remove the annotations folder
+    shutil.rmtree(path_in_dir)
+
 
 def create_json(file_path):
 
@@ -70,7 +115,6 @@ def create_json(file_path):
         json_file.write(json_output)
 
     return output_json_path
-
 
 
 def load_image_captions_from_json(path: str) -> dict:
@@ -120,6 +164,7 @@ def load_and_process_captions_flickr8k(path: str) -> Tuple[dict, List[str]]:
         A tuple containing a dictionary where keys are image file names and values are lists of captions,
         and a list of all words used in the captions.
     """
+    # TODO: Verify that this is correct (the relationship between the functions and the return values)
     organize_caption_flickr8k(path)
     json_path = create_json(os.path.join(path, 'captions.txt'))
     captions_dict, word_list = load_image_captions_from_json(json_path)
