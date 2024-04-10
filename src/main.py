@@ -5,6 +5,7 @@ from src.data import Flikr8kDataset
 from src.train import train_model
 from src.image_data_processing import download_and_prepare_flickr8k_dataset
 from src.text_data_processing import load_and_process_captions_flickr8k, create_lookup_tables
+from src.utils import load_data
 
 # Libraries to show the image and add the caption
 from PIL import Image
@@ -27,15 +28,10 @@ def main():
     num_layers = 1
     drop_prob = 0.5
 
-    # load and preprocess data
-    download_and_prepare_flickr8k_dataset(path)
-    captions_dict, word_list = load_and_process_captions_flickr8k(path)
-
     # load data
     # TODO: implementar función load_data que cree los datasets y los dataloaders
+    train_loader, val_loader, test_loader, word_to_index, index_to_word = load_data(path, batch_size)
 
-    # Create lookup tables
-    word_to_index, index_to_word = create_lookup_tables(word_list)
 
     if need_to_train:
         encoder_params = [embedding_size]
@@ -44,7 +40,7 @@ def main():
         model.to(device)
 
         # train model
-        # train_model(device, num_epochs, learning_rate, model, train_loader, val_loader)
+        train_model(device, num_epochs, learning_rate, model, train_loader, val_loader)
 
     else:
         # We load the model from the models folder

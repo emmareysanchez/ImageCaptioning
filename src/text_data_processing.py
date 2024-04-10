@@ -153,7 +153,7 @@ def load_image_captions_from_json(path: str) -> dict:
     return captions_dict, word_list
 
 
-def load_and_process_captions_flickr8k(path: str) -> Tuple[dict, List[str]]:
+def load_and_process_captions_flickr8k(path: str) -> Tuple[dict, dict, dict, List[str]]:
     """
     Load and process image captions from the Flickr8k dataset.
 
@@ -161,13 +161,22 @@ def load_and_process_captions_flickr8k(path: str) -> Tuple[dict, List[str]]:
         path: The path to the directory containing the captions.json file.
 
     Returns:
-        A tuple containing a dictionary where keys are image file names and values are lists of captions,
-        and a list of all words used in the captions.
+        - Dictionary containing image captions for the training set.
+        - Dictionary containing image captions for the validation set.
+        - Dictionary containing image captions for the test set.
+        - List of all words used in the captions of the training set.
     """
     # TODO: Verify that this is correct (the relationship between the functions and the return values)
     organize_caption_flickr8k(path)
-    json_path = create_json(os.path.join(path, 'captions.txt'))
-    captions_dict, word_list = load_image_captions_from_json(json_path)
+    # json_path = create_json(os.path.join(path, 'captions.txt'))
+    json_path_train = path + "/captions_train.json"
+    json_path_val = path + "/captions_val.json"
+    json_path_test = path + "/captions_test.json"
+
+    captions_dict_train, word_list = load_image_captions_from_json(json_path_train)
+    captions_dict_val, _ = load_image_captions_from_json(json_path_val)
+    captions_dict_test, _ = load_image_captions_from_json(json_path_test)
+
     return captions_dict, word_list
 
 

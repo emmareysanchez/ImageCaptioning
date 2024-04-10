@@ -36,6 +36,7 @@ def train_step(
 
     for inputs, targets in train_data:
 
+        print(targets[0])
         inputs = inputs.to(device)
         targets = targets.to(device)
 

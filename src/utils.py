@@ -16,6 +16,12 @@ from rouge import Rouge
 from pycocoevalcap.cider.cider import Cider
 from nltk.translate.meteor_score import meteor_score
 
+# Libraries for data processing
+from torch.utils.data import DataLoader
+from src.image_data_processing import download_and_prepare_flickr8k_dataset
+from src.text_data_processing import load_and_process_captions_flickr8k, create_lookup_tables
+from src.data import ImageAndCaptionsDataset
+
 def tokenize(text: str) -> str:
 
     # Replace punctuation with tokens so we can use them in our model
@@ -189,3 +195,55 @@ def calculate_meteor(reference_captions: List[str], candidate_caption: str) -> f
     scores = [meteor_score([ref], candidate_caption) for ref in reference_captions]
     # In this case, we return the average METEOR score across all references.
     return sum(scores) / len(scores)
+
+
+
+def load_data(
+    path: str,
+    batch_size: int = 64,
+    shuffle: bool = True,
+    drop_last: bool = True,
+    num_workers: int = 0,
+) -> tuple[DataLoader, DataLoader, DataLoader, float, float]:
+    
+
+    # load and preprocess data
+    download_and_prepare_flickr8k_dataset(path)
+    captions_dict_train, captions_dict_val, captions_dict_test, word_list = load_and_process_captions_flickr8k(path)
+
+    # Create lookup tables
+    word_to_index, index_to_word = create_lookup_tables(word_list)
+
+    train_path = f"{path}/train"
+    val_path = f"{path}/val"
+    test_path = f"{path}/test"
+
+    # Create for training, test and validation datasets
+    train_dataset = ImageAndCaptionsDataset(train_path, captions_dict_train, word_to_index)
+    val_dataset = ImageAndCaptionsDataset(val_path, captions_dict_val, word_to_index)
+    test_dataset = ImageAndCaptionsDataset(test_path, captions_dict_test, word_to_index)
+
+    # Create dataloaders
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        drop_last=drop_last,
+        num_workers=num_workers,
+    )
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        drop_last=drop_last,
+        num_workers=num_workers,
+    )
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        drop_last=drop_last,
+        num_workers=num_workers,
+    )
+
+    return train_loader, val_loader, test_loader, word_to_index, index_to_word
