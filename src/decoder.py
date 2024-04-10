@@ -42,44 +42,67 @@ class RNN(nn.Module):
         # Dropout for regularization
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, captions: torch.Tensor, features: torch.Tensor, lengths: torch.Tensor) -> torch.Tensor:
+    def forward(self, features, start_token_index, end_token_index, vocab_size):
         """
         Args:
-            captions (torch.Tensor): Tensor de índices de palabras con shape (batch_size, max_length).
-            features (torch.Tensor): Tensor de características de imagen con shape (batch_size, feature_size).
-            lengths (torch.Tensor): Longitudes de cada caption en el lote, con shape (batch_size,).
+            features (torch.Tensor): Tensor de características de imagen (vector de contexto) con shape (batch_size, feature_size).
+            start_token_index (int): Índice del token de inicio en el vocabulario.
+            end_token_index (int): Índice del token de fin en el vocabulario.
+            vocab_size (int): Tamaño del vocabulario.
 
         Returns:
-            torch.Tensor: Salida del modelo con las predicciones de las próximas palabras, 
-                           típicamente con shape (batch_size, max_length, vocab_size) después de aplicar el log_softmax.
+            torch.Tensor: Tensor con las log-probabilidades de las palabras predichas para cada posición en la secuencia.
         """
+        batch_size = features.size(0)
+        max_seq_length = 50 # FIXME: Verificar el máximo de palabras a generar
 
-        # Embed caption inputs
-        embeddings = self.dropout(self.embedding(captions)) # ¿Es necesario?
+        # Inicializa el tensor para almacenar las log-probabilidades de las predicciones
+        outputs = torch.zeros(batch_size, max_seq_length, vocab_size).to(features.device)
 
-        # Pack the embedded captions
-        packed_embeddings = nn.utils.rnn.pack_padded_sequence(embeddings, lengths, batch_first=True, enforce_sorted=False)
+        # Inicializa el estado oculto y el estado de celda de la LSTM con el vector de contexto
+        h, c = self.init_hidden(features)
+
+        # Prepara el primer input para la LSTM, que será el token de inicio
+        input_word = torch.full((batch_size,), start_token_index, dtype=torch.long).to(features.device)
+        end_tokens = torch.full((batch_size,), end_token_index, dtype=torch.long).to(features.device)
         
-        # Initialize the LSTM state with the CNN features
-        # Here, 'features' must be shaped as (num_layers * num_directions, batch, hidden_size)
-        # You might need to process 'features' to achieve this shape, depending on the CNN output
-        h0, c0 = self.init_hidden(features)
-        
-        # Forward pass through LSTM
-        packed_output, (hidden, _) = self.lstm(packed_embeddings, (h0, c0))
-        
-        # Unpack output
-        output, _ = nn.utils.rnn.pad_packed_sequence(packed_output, batch_first=True)
-        
-        # Pass the output through the fully connected layer
-        output = self.linear(self.dropout(output))
-        
-        return output
+        # Mascara para finalizar generación una vez se prediga el end token
+        end_token_mask = torch.zeros(batch_size, dtype=torch.bool).to(features.device)
+
+        for t in range(max_seq_length):
+            # Embedding del input actual
+            input_embedding = self.embedding(input_word).unsqueeze(1)
+            
+            # Pasa el embedding y el estado oculto a la LSTM
+            lstm_out, (h, c) = self.lstm(input_embedding, (h, c))
+            
+            # Calcula la log-probabilidad de la siguiente palabra
+            output = self.linear(lstm_out.squeeze(1))
+            outputs[:, t, :] = output
+            
+            # Obtén la siguiente palabra (la de mayor log-probabilidad)
+            input_word = output.argmax(1)
+            
+            # Comprobar si se ha predicho el end token y actualizar la máscara
+            end_token_mask |= input_word == end_tokens
+            
+            # Si todas las secuencias han generado el end token, detener el bucle
+            if end_token_mask.all():
+                break
+
+        return outputs
     
     def init_hidden(self, features):
-        """Assuming features is the output of the CNN and has shape (batch_size, cnn_output_size),
-        process it to be the initial hidden state of the LSTM (and cell state)."""
-        batch_size = features.size(0)
+        """
+        Assuming features is the output of the CNN and has shape (batch_size, cnn_output_size),
+        process it to be the initial hidden state of the LSTM (and cell state).
+        
+        Args:
+            features (torch.Tensor): Output of the CNN with shape (batch_size, cnn_output_size).
+
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor]: Tuple containing the initial hidden state and cell state.
+        """
         # Transform features to be the initial hidden state
         # Note: This might involve linear layers or other transformations,
         # depending on the dimensions needed.
