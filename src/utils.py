@@ -28,42 +28,6 @@ from src.text_data_processing import (
 from src.data import ImageAndCaptionsDataset
 
 
-def tokenize(text: str) -> str:
-
-    # Replace punctuation with tokens so we can use them in our model
-    text = text.replace(".", " <PERIOD> ")
-    text = text.replace(",", " <COMMA> ")
-    text = text.replace('"', " <QUOTATION_MARK> ")
-    text = text.replace(";", " <SEMICOLON> ")
-    text = text.replace("!", " <EXCLAMATION_MARK> ")
-    text = text.replace("?", " <QUESTION_MARK> ")
-    text = text.replace("(", " <LEFT_PAREN> ")
-    text = text.replace(")", " <RIGHT_PAREN> ")
-    text = text.replace("--", " <HYPHENS> ")
-    text = text.replace("?", " <QUESTION_MARK> ")
-    text = text.replace(":", " <COLON> ")
-
-    return text
-
-
-def untokenize(text: str) -> str:
-
-    # Replace punctuation with tokens so we can use them in our model
-    text = text.replace(" <PERIOD> ", ".")
-    text = text.replace(" <COMMA> ", ",")
-    text = text.replace(" <QUOTATION_MARK> ", '"')
-    text = text.replace(" <SEMICOLON> ", ";")
-    text = text.replace(" <EXCLAMATION_MARK> ", "!")
-    text = text.replace(" <QUESTION_MARK> ", "?")
-    text = text.replace(" <LEFT_PAREN> ", "(")
-    text = text.replace(" <RIGHT_PAREN> ", ")")
-    text = text.replace(" <HYPHENS> ", "--")
-    text = text.replace(" <QUESTION_MARK> ", "?")
-    text = text.replace(" <COLON> ", ":")
-
-    return text
-
-
 def save_model(model: torch.nn.Module, name: str) -> None:
     """
     This function saves a model in the 'models' folder as a torch.jit.
@@ -206,30 +170,60 @@ def calculate_meteor(reference_captions: List[str], candidate_caption: str) -> f
 def load_data(
     path: str,
     batch_size: int = 64,
-    shuffle: bool = True,
+    shuffle: bool = False,
     drop_last: bool = True,
     num_workers: int = 0,
 ) -> tuple[DataLoader, DataLoader, DataLoader, float, float]:
 
     # load and preprocess data
     download_and_prepare_flickr8k_dataset(path)
+    captions_path = path
     captions_dict_train, captions_dict_val, captions_dict_test, word_list = (
-        load_and_process_captions_flickr8k(path)
+        load_and_process_captions_flickr8k(captions_path)
     )
+
 
     # Create lookup tables
     word_to_index, index_to_word = create_lookup_tables(word_list)
 
-    train_path = f"{path}/train"
-    val_path = f"{path}/val"
-    test_path = f"{path}/test"
+    # Change captions to indices
+    captions_dict_train = captions_to_indices(captions_dict_train, word_to_index)
+    captions_dict_val = captions_to_indices(captions_dict_val, word_to_index)
+    captions_dict_test = captions_to_indices(captions_dict_test, word_to_index)
+
+    # All captions must be the same length
+    # We will use the length of the longest caption
+    max_length_train = max(
+        [
+            len(caption)
+            for captions in captions_dict_train.values()
+            for caption in captions
+        ]
+    )
+
+    # Update the lenght of the captions
+    for key in captions_dict_train:
+        for caption in captions_dict_train[key]:
+            caption += [word_to_index["</s>"]] * (max_length_train - len(caption))
+
+    # We only keep the first caption
+    captions_dict_train = {
+        key: captions[0] for captions in captions_dict_train[key]
+        for key in captions_dict_train
+    }
+
+    # FIXME: hacerlo en val y test
+
+    train_path = f"{path}/flickr8k/train"
+    val_path = f"{path}/flickr8k/val"
+    test_path = f"{path}/flickr8k/test"
 
     # Create for training, test and validation datasets
     train_dataset = ImageAndCaptionsDataset(
-        train_path, captions_dict_train, word_to_index
+        train_path, captions_dict_train
     )
-    val_dataset = ImageAndCaptionsDataset(val_path, captions_dict_val, word_to_index)
-    test_dataset = ImageAndCaptionsDataset(test_path, captions_dict_test, word_to_index)
+    val_dataset = ImageAndCaptionsDataset(val_path, captions_dict_val)
+    test_dataset = ImageAndCaptionsDataset(test_path, captions_dict_test)
 
     # Create dataloaders
     train_loader = DataLoader(
@@ -255,6 +249,56 @@ def load_data(
     )
 
     return train_loader, val_loader, test_loader, word_to_index, index_to_word
+
+
+def captions_to_indices(captions: dict, word_to_index:dict) -> dict:
+    """
+    This function converts captions to indices.
+
+    Args:
+        captions: dictionary with the captions.
+            - the key is the image name.
+            - the value is a list of captions.
+        word_to_index: dictionary to convert words to indices.
+
+    Returns:
+        dictionary with the captions as indices.
+    """
+    # Change captions to indices
+    # The key will be the image name and the value will be a list of lists
+    # with the indices of the words
+    # If the word is not in the dictionary, we will ignore it
+    captions_indices = {
+        key: [
+            [word_to_index[word] for word in caption.split() if word in word_to_index]
+            for caption in captions[key]
+        ]
+        for key in captions
+    }
+
+    return captions_indices
+
+
+def indices_to_captions(captions: dict, index_to_word: dict) -> dict:
+    """
+    This function converts captions from indices to words.
+
+    Args:
+        captions: dictionary with the captions as indices.
+        index_to_word: dictionary to convert indices to words.
+
+    Returns:
+        dictionary with the captions as words.
+    """
+    # Change captions to words
+    captions_words = {
+        key: [
+            " ".join([index_to_word[index] for index in caption])
+            for caption in captions[key]
+        ]
+        for key in captions
+    }
+    return captions_words
 
 
 def save_images_with_captions(
@@ -294,3 +338,58 @@ def save_images_with_captions(
         # plt.close()
 
     return None
+
+
+def generate_caption(output: torch.Tensor, index_to_word: dict) -> str:
+    """
+    This function generates a caption from the output of the model.
+
+    Args:
+        output: output of the model.
+        index_to_word: dictionary to convert indices to words.
+
+    Returns:
+        caption as a string.
+    """
+
+    # Get the indices of the words
+    indices = torch.argmax(output, dim=1)
+
+    # Convert indices to words
+    caption = " ".join([index_to_word[index.item()] for index in indices])
+
+    return caption
+
+def generate_caption2(self, outputs):
+        """
+        Generate a caption for each batch of features in the input.
+
+        Args:
+            outputs (torch.Tensor): Tensor with the log-probabilities of the predicted words for each position in the sequence.
+
+        Returns:
+            List[str]: List of captions generated for each image in the batch.
+        """
+        # Initialize the list to store the generated captions
+        captions = []
+        
+        # Get the predicted words for each position in the sequence
+        predicted_words = outputs.argmax(2)
+        
+        # Iterate over the batch
+        for prediction in predicted_words:
+            # Initialize the caption for the current image
+            caption = []
+            for word_index in prediction:
+                # Get the corresponding word from the vocabulary
+                word = self.vocab.itos[word_index.item()]
+                # Append the word to the caption
+                caption.append(word)
+                # If the word is the end token, stop the caption
+                if word == "</s>":
+                    break
+            # Join the words in the caption and append it to the list
+            captions.append(" ".join(caption))
+        
+        return captions
+

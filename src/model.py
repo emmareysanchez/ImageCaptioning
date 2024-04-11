@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 
-from encoder import ModifiedVGG19
-from decoder import RNN
+from src.encoder import ModifiedVGG19
+from src.decoder import RNN
 
 class MyModel(nn.Module):
     def __init__(self, encoder_params, decoder_params):
@@ -17,7 +17,7 @@ class MyModel(nn.Module):
         self.encoder = ModifiedVGG19(**encoder_params)
         self.decoder = RNN(**decoder_params)
 
-    def forward(self, images, captions, caption_lengths):
+    def forward(self, images):
         """
         Define el paso hacia adelante del modelo.
 
@@ -30,5 +30,9 @@ class MyModel(nn.Module):
             torch.Tensor: El resultado del decoder.
         """
         features = self.encoder(images)
-        outputs = self.decoder(captions, features, caption_lengths)
+
+        print(features.shape)
+        outputs = self.decoder(features)
         return outputs
+
+    

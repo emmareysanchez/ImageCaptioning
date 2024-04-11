@@ -7,6 +7,8 @@ from torch.utils.tensorboard import SummaryWriter
 # other libraries
 from typing import Optional
 
+from src.utils import generate_caption
+
 
 @torch.enable_grad()
 def train_step(
@@ -36,7 +38,6 @@ def train_step(
 
     for inputs, targets in train_data:
 
-        print(targets[0])
         inputs = inputs.to(device)
         targets = targets.to(device)
 
@@ -48,7 +49,10 @@ def train_step(
 
         outputs = model(inputs)
 
-        loss_value = loss(outputs, targets)
+        print('Output', outputs.shape)
+        print('Targets:', targets.shape)
+
+        loss_value = loss(outputs.view(-1, outputs.size(2)), targets.view(-1))
 
         loss_value.backward()
         optimizer.step()

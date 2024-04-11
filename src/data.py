@@ -13,7 +13,7 @@ from PIL import Image
 
 # from our libraries
 # FIXME: See how this function is called and, if necessary, create it
-from src.text_data_processing import load_captions
+# from src.text_data_processing import load_captions
 
 
 # class MSCOCODataset(Dataset):
@@ -170,6 +170,7 @@ class ImageAndCaptionsDataset(Dataset):
         # Load image path and captions
         image_path: str = f"{self.path}/{self.names[index]}"
         captions: list = self.captions[self.names[index]]
+        captions: torch.Tensor = torch.tensor(captions)
 
         # Load image transforming it to tensor
         transformations = transforms.Compose([transforms.ToTensor()])

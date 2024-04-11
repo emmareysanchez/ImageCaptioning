@@ -1,10 +1,7 @@
 import torch
 
 from src.model import MyModel
-from src.data import Flikr8kDataset
 from src.train import train_model
-from src.image_data_processing import download_and_prepare_flickr8k_dataset
-from src.text_data_processing import load_and_process_captions_flickr8k, create_lookup_tables
 from src.utils import load_data
 
 # Libraries to show the image and add the caption
@@ -24,7 +21,7 @@ def main():
     num_epochs = 10
     learning_rate = 0.001
     embedding_size = 256
-    hidden_size = 512
+    hidden_size = 256
     num_layers = 1
     drop_prob = 0.5
 
@@ -34,8 +31,14 @@ def main():
 
 
     if need_to_train:
-        encoder_params = [embedding_size]
-        decoder_params = [len(word_to_index), embedding_size, hidden_size, num_layers, drop_prob]
+        encoder_params = {'embedding_dim': embedding_size}
+        decoder_params = {'vocab_size': len(word_to_index),
+                          'embedding_dim': embedding_size,
+                          'hidden_dim': hidden_size,
+                          'num_layers': num_layers,
+                          'start_token_index': word_to_index['<s>'],
+                          'end_token_index': word_to_index['</s>'],
+                          'dropout': drop_prob}
         model = MyModel(encoder_params, decoder_params)
         model.to(device)
 
@@ -57,3 +60,8 @@ def main():
     # plt.imshow(image)
     # plt.title(caption)
     # plt.show()
+
+
+
+if __name__ == "__main__":
+    main() 

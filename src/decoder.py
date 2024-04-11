@@ -20,7 +20,7 @@ class RNN(nn.Module):
         num_layers (int): The number of layers in the LSTM.
     """
 
-    def __init__(self, vocab_size: int, embedding_dim: int, hidden_dim: int, num_layers: int, dropout: float = 0.5):
+    def __init__(self, vocab_size: int, embedding_dim: int, hidden_dim: int, num_layers: int, start_token_index, end_token_index, dropout: float = 0.5):
         """
         Initializes the RNN model with given embedding weights, hidden dimension, and number of layers.
 
@@ -42,7 +42,14 @@ class RNN(nn.Module):
         # Dropout for regularization
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, features, start_token_index, end_token_index, vocab_size):
+        # Save the vocab size
+        self.vocab_size = vocab_size
+
+        # Save the start and end token indices
+        self.start_token_index = start_token_index
+        self.end_token_index = end_token_index
+
+    def forward(self, features):
         """
         Args:
             features (torch.Tensor): Tensor de características de imagen (vector de contexto) con shape (batch_size, feature_size).
@@ -57,14 +64,14 @@ class RNN(nn.Module):
         max_seq_length = 50 # FIXME: Verificar el máximo de palabras a generar
 
         # Inicializa el tensor para almacenar las log-probabilidades de las predicciones
-        outputs = torch.zeros(batch_size, max_seq_length, vocab_size).to(features.device)
+        outputs = torch.zeros(batch_size, max_seq_length, self.vocab_size).to(features.device)
 
         # Inicializa el estado oculto y el estado de celda de la LSTM con el vector de contexto
         h, c = self.init_hidden(features)
 
         # Prepara el primer input para la LSTM, que será el token de inicio
-        input_word = torch.full((batch_size,), start_token_index, dtype=torch.long).to(features.device)
-        end_tokens = torch.full((batch_size,), end_token_index, dtype=torch.long).to(features.device)
+        input_word = torch.full((batch_size,), self.start_token_index, dtype=torch.long).to(features.device)
+        end_tokens = torch.full((batch_size,), self.end_token_index, dtype=torch.long).to(features.device)
         
         # Mascara para finalizar generación una vez se prediga el end token
         end_token_mask = torch.zeros(batch_size, dtype=torch.bool).to(features.device)
@@ -109,3 +116,5 @@ class RNN(nn.Module):
         h0 = features.unsqueeze(0)  # Example transformation
         c0 = torch.zeros_like(h0)  # Initial cell state is often just zeros
         return h0, c0
+    
+    

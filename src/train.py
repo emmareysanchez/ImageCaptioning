@@ -27,8 +27,8 @@ def train_model(device: torch.device,
     # define optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
-    # define loss
-    loss = torch.nn.MSELoss()
+    # define Cross Entropy loss
+    loss = torch.nn.CrossEntropyLoss()
 
     # define tensorboard writer
     writer = SummaryWriter()

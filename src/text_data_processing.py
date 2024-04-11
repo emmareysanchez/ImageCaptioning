@@ -2,13 +2,46 @@ from typing import List, Tuple, Dict
 from collections import Counter
 import torch
 from torch.utils.data import Dataset, DataLoader, random_split
-from src.data import MSCOCODataset
 import os
 import pandas as pd
 import json
 import shutil
 
-from src.utils import tokenize
+def tokenize(text: str) -> str:
+
+    # Replace punctuation with tokens so we can use them in our model
+    text = text.replace(".", " <PERIOD> ")
+    text = text.replace(",", " <COMMA> ")
+    text = text.replace('"', " <QUOTATION_MARK> ")
+    text = text.replace(";", " <SEMICOLON> ")
+    text = text.replace("!", " <EXCLAMATION_MARK> ")
+    text = text.replace("?", " <QUESTION_MARK> ")
+    text = text.replace("(", " <LEFT_PAREN> ")
+    text = text.replace(")", " <RIGHT_PAREN> ")
+    text = text.replace("--", " <HYPHENS> ")
+    text = text.replace("?", " <QUESTION_MARK> ")
+    text = text.replace(":", " <COLON> ")
+
+    return text
+
+
+def untokenize(text: str) -> str:
+
+    # Replace punctuation with tokens so we can use them in our model
+    text = text.replace(" <PERIOD> ", ".")
+    text = text.replace(" <COMMA> ", ",")
+    text = text.replace(" <QUOTATION_MARK> ", '"')
+    text = text.replace(" <SEMICOLON> ", ";")
+    text = text.replace(" <EXCLAMATION_MARK> ", "!")
+    text = text.replace(" <QUESTION_MARK> ", "?")
+    text = text.replace(" <LEFT_PAREN> ", "(")
+    text = text.replace(" <RIGHT_PAREN> ", ")")
+    text = text.replace(" <HYPHENS> ", "--")
+    text = text.replace(" <QUESTION_MARK> ", "?")
+    text = text.replace(" <COLON> ", ":")
+
+    return text
+
 
 def organize_caption_flickr8k(path: str) -> None:
     """"
@@ -20,30 +53,34 @@ def organize_caption_flickr8k(path: str) -> None:
     """
     # FIXME: Remove the test set from the Flickr8k dataset here and in the image_data_processing.py file
     # Open the captions.txt file as a DataFrame
-    df_captions = pd.read_csv(os.path.join(path, 'captions.txt'), sep=',')
+    captions_path = path + "/flickr8k/captions.txt"
 
     # Separate the images into train, validation and test sets
-    images_train = os.listdir(os.path.join(path, 'train'))
-    images_val = os.listdir(os.path.join(path, 'val'))
-    images_test = os.listdir(os.path.join(path, 'test'))
+    # Only if the images are not already separated
+    if os.path.exists(captions_path):
+        df_captions = pd.read_csv(captions_path, sep=',')
 
-    # Filter the captions for each set
-    df_captions_train = df_captions[df_captions['image'].isin(images_train)]
-    df_captions_val = df_captions[df_captions['image'].isin(images_val)]
-    df_captions_test = df_captions[df_captions['image'].isin(images_test)]
+        images_train = os.listdir(os.path.join(path, 'train'))
+        images_val = os.listdir(os.path.join(path, 'val'))
+        images_test = os.listdir(os.path.join(path, 'test'))
 
-    # Create JSON for each set
-    sets = {'train': df_captions_train, 'val': df_captions_val, 'test': df_captions_test}
-    for set_name, set_captions in sets.items():
-        # Group captions by image and convert to dictionary
-        image_captions = set_captions.groupby('image')['caption'].apply(list).to_dict()
+        # Filter the captions for each set
+        df_captions_train = df_captions[df_captions['image'].isin(images_train)]
+        df_captions_val = df_captions[df_captions['image'].isin(images_val)]
+        df_captions_test = df_captions[df_captions['image'].isin(images_test)]
 
-        # Write JSON file
-        with open(os.path.join(path, f'captions_{set_name}.json'), 'w') as json_file:
-            json.dump(image_captions, json_file, indent=4)
-    
-    # Remove the captions.txt file
-    os.remove(os.path.join(path, 'captions.txt'))
+        # Create JSON for each set
+        sets = {'train': df_captions_train, 'val': df_captions_val, 'test': df_captions_test}
+        for set_name, set_captions in sets.items():
+            # Group captions by image and convert to dictionary
+            image_captions = set_captions.groupby('image')['caption'].apply(list).to_dict()
+
+            # Write JSON file
+            with open(os.path.join(path, f'captions_{set_name}.json'), 'w') as json_file:
+                json.dump(image_captions, json_file, indent=4)
+        
+        # Remove the captions.txt file
+        os.remove(os.path.join(path, 'captions.txt'))
 
 
 def organize_caption_mscoco(path: str) -> None:
@@ -84,39 +121,6 @@ def organize_caption_mscoco(path: str) -> None:
     shutil.rmtree(path_in_dir)
 
 
-def create_json(file_path):
-
-    # Initialize a dictionary to hold the image numbers as keys and a list of associated captions as values
-    captions_dict = {}
-
-    # Open and read the file line by line
-    with open(file_path, 'r', encoding='utf-8') as file:
-        next(file)  # Skip the header line
-        for line in file:
-            # Split each line into image number and caption
-            image_num, caption = line.strip().split(',', 1)
-            # Remove the file extension from image number
-            image_num = image_num.split('.')[0]
-            
-            # Append the caption to the list of captions for the current image number, creating a new list if necessary
-            if image_num in captions_dict:
-                captions_dict[image_num].append(caption.strip())
-            else:
-                captions_dict[image_num] = [caption.strip()]
-
-    # Convert the dictionary to a JSON string
-    json_output = json.dumps(captions_dict, indent=4)
-
-    # Define the output JSON file path
-    output_json_path = os.path.join('./data/flickr8k', 'captions.json')
-
-    # Write the JSON string to the output file
-    with open(output_json_path, 'w', encoding='utf-8') as json_file:
-        json_file.write(json_output)
-
-    return output_json_path
-
-
 def load_image_captions_from_json(path: str) -> dict:
     """
     Load image captions from a captions.json file.
@@ -129,10 +133,10 @@ def load_image_captions_from_json(path: str) -> dict:
         Additionally returns a list of all words used in the captions.
     """
     # El archivo JSON ya contiene los nombres de las imágenes sin la extensión .jpeg
-    json_path = os.path.join(path, 'captions.json')
+    # json_path = os.path.join(path, 'captions.json')
     word_list = []
 
-    with open(json_path, 'r', encoding='utf-8') as json_file:
+    with open(path, 'r', encoding='utf-8') as json_file:
         captions_dict = json.load(json_file)
 
     # Procesar cada caption para generar la word_list
@@ -149,7 +153,10 @@ def load_image_captions_from_json(path: str) -> dict:
             caption_processed = "<s> " + caption_processed + " </s>"
             word_list.extend(caption_processed.split())
 
-    print(f"Loaded {len(captions_dict)} image captions from {json_path}")
+            # Update the caption in the dictionary
+            captions[captions.index(caption)] = caption_processed
+
+    print(f"Loaded {len(captions_dict)} image captions from {path}")
     return captions_dict, word_list
 
 
@@ -168,16 +175,17 @@ def load_and_process_captions_flickr8k(path: str) -> Tuple[dict, dict, dict, Lis
     """
     # TODO: Verify that this is correct (the relationship between the functions and the return values)
     organize_caption_flickr8k(path)
+
     # json_path = create_json(os.path.join(path, 'captions.txt'))
-    json_path_train = path + "/captions_train.json"
-    json_path_val = path + "/captions_val.json"
-    json_path_test = path + "/captions_test.json"
+    json_path_train = path + "/flickr8k/captions_train.json"
+    json_path_val = path + "/flickr8k/captions_val.json"
+    json_path_test = path + "/flickr8k/captions_test.json"
 
     captions_dict_train, word_list = load_image_captions_from_json(json_path_train)
     captions_dict_val, _ = load_image_captions_from_json(json_path_val)
     captions_dict_test, _ = load_image_captions_from_json(json_path_test)
 
-    return captions_dict, word_list
+    return captions_dict_train, captions_dict_val, captions_dict_test, word_list
 
 
 # def load_image_captions(path: str) -> dict:
@@ -261,7 +269,6 @@ def create_lookup_tables(words: List[str]) -> Tuple[Dict[str, int], Dict[int, st
 
     int_to_vocab: Dict[int, str] = {ii: word for ii, word in enumerate(sorted_vocab)}
     vocab_to_int: Dict[str, int] = {word: ii for ii, word in int_to_vocab.items()}
-
 
     return vocab_to_int, int_to_vocab
 
