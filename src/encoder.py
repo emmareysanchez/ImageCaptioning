@@ -3,6 +3,7 @@ from torch import nn
 from torchvision import models
 
 
+
 class ModifiedVGG19(nn.Module):
     """
     A modified VGG19 model implemented using PyTorch for extracting image features.
@@ -21,7 +22,7 @@ class ModifiedVGG19(nn.Module):
         """
         super(ModifiedVGG19, self).__init__()
         # Load the pretrained VGG19 model
-        vgg19 = models.vgg19(pretrained=True).features
+        vgg19 = models.vgg19(weights='DEFAULT').features
 
         # Here we keep the convolutional layers of VGG19 unchanged
         self.features = vgg19

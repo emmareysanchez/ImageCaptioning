@@ -225,10 +225,34 @@ def load_data(
         ]
     )
 
+    max_length_test = max(
+        [
+            len(caption)
+            for captions in captions_dict_test.values()
+            for caption in captions
+        ]
+    )
+
+    max_length_val = max(
+        [
+            len(caption)
+            for captions in captions_dict_val.values()
+            for caption in captions
+        ]
+    )
+
     # Update the lenght of the captions
     for key in captions_dict_train:
         for caption in captions_dict_train[key]:
             caption += [word_to_index["</s>"]] * (max_length_train - len(caption))
+
+    for key in captions_dict_val:
+        for caption in captions_dict_val[key]:
+            caption += [word_to_index["</s>"]] * (max_length_val - len(caption))
+
+    for key in captions_dict_test:
+        for caption in captions_dict_test[key]:
+            caption += [word_to_index["</s>"]] * (max_length_test - len(caption))
 
     # We only keep the first caption
     captions_dict_train = {
@@ -236,7 +260,15 @@ def load_data(
         for key in captions_dict_train
     }
 
-    # TODO: hacerlo en val y test
+    captions_dict_val = {
+        key: captions[0] for captions in captions_dict_val[key]
+        for key in captions_dict_val
+    }
+
+    captions_dict_test = {
+        key: captions[0] for captions in captions_dict_test[key]
+        for key in captions_dict_test
+    }
 
     train_path = f"{path}/flickr8k/train"
     val_path = f"{path}/flickr8k/val"

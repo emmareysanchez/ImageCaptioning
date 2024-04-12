@@ -4,6 +4,8 @@ import numpy as np
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
+import tqdm
+
 # # other libraries
 # from typing import Optional
 # from src.utils import generate_caption
@@ -35,28 +37,26 @@ def train_step(
     # Model in training mode
     model.train()
 
-    for inputs, targets in train_data:
+    for inputs, targets in tqdm.tqdm(train_data):
 
         inputs = inputs.to(device)
         targets = targets.to(device)
 
         # Inputs must be float
         inputs = inputs.float()
-        targets = targets.float()
+        targets = targets.long()
 
         optimizer.zero_grad()
 
-        outputs = model(inputs)
+        outputs = model(inputs, targets)
 
-        print('Output', outputs.shape)
-        print('Targets:', targets.shape)
-
-        loss_value = loss(outputs.view(-1, outputs.size(2)), targets.view(-1))
+        loss_value = loss(outputs, targets)
 
         loss_value.backward()
         optimizer.step()
 
         writer.add_scalar("Loss/train", loss_value.item(), epoch)
+        
 
 
 @torch.no_grad()
