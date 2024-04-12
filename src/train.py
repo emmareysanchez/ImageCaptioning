@@ -43,7 +43,7 @@ def train_model(device: torch.device,
     # train model
     for epoch in range(epochs):
         train_step(model, train_loader, loss, optimizer, writer, epoch, device)
-        val_step(model, val_loader, loss, writer, epoch, device)
+        # val_step(model, val_loader, loss, writer, epoch, device)
 
     # save model
     save_model(model, "model")
