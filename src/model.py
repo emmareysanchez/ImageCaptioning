@@ -90,8 +90,8 @@ class MyModel(nn.Module):
         self.eval()
         with torch.no_grad():
             features = self.encoder(images)
-            start_token = vocab('<s>')
-            end_token = vocab('</s>')
+            start_token = vocab['<s>']
+            end_token = vocab['</s>']
 
             captions = [[start_token] for _ in range(images.shape[0])]
 
@@ -106,7 +106,7 @@ class MyModel(nn.Module):
 
                     captions[i].append(token.item())
 
-            captions = [' '.join([vocab.idx2word[token] for token in caption]) for caption in captions]
+            captions = [' '.join([vocab[token] for token in caption]) for caption in captions]
 
         return captions
         
