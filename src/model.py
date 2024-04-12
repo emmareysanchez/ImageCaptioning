@@ -75,38 +75,38 @@ class MyModel(nn.Module):
 
                 caption.append(predicted)
 
-        def generate_batch_captions(self, images: torch.Tensor, vocab, max_len: int = 50) -> list:
-            """
-            Generate captions for a batch of images.
+    def generate_batch_captions(self, images: torch.Tensor, vocab, max_len: int = 50) -> list:
+        """
+        Generate captions for a batch of images.
 
-            Args:
-                images (torch.Tensor): The input images.
-                vocab (Vocab): The vocabulary object.
-                max_len (int): The maximum length of the caption.
+        Args:
+            images (torch.Tensor): The input images.
+            vocab (Vocab): The vocabulary object.
+            max_len (int): The maximum length of the caption.
 
-            Returns:
-                list: The generated captions.
-            """
-            self.eval()
-            with torch.no_grad():
-                features = self.encoder(images)
-                start_token = vocab('<s>')
-                end_token = vocab('</s>')
+        Returns:
+            list: The generated captions.
+        """
+        self.eval()
+        with torch.no_grad():
+            features = self.encoder(images)
+            start_token = vocab('<s>')
+            end_token = vocab('</s>')
 
-                captions = [[start_token] for _ in range(images.shape[0])]
+            captions = [[start_token] for _ in range(images.shape[0])]
 
-                for _ in range(max_len):
-                    captions_tensor = torch.tensor(captions).long()
-                    outputs = self.decoder(features, captions_tensor)
-                    predicted = outputs.argmax(2)[:, -1]
+            for _ in range(max_len):
+                captions_tensor = torch.tensor(captions).long()
+                outputs = self.decoder(features, captions_tensor)
+                predicted = outputs.argmax(2)[:, -1]
 
-                    for i, token in enumerate(predicted):
-                        if token.item() == end_token:
-                            continue
+                for i, token in enumerate(predicted):
+                    if token.item() == end_token:
+                        continue
 
-                        captions[i].append(token.item())
+                    captions[i].append(token.item())
 
-                captions = [' '.join([vocab.idx2word[token] for token in caption]) for caption in captions]
+            captions = [' '.join([vocab.idx2word[token] for token in caption]) for caption in captions]
 
-            return captions
-            
+        return captions
+        
