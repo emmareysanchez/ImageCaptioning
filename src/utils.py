@@ -242,9 +242,11 @@ def load_data(
     )
 
     # Update the lenght of the captions
+    # Show the first element of the dictionary
     for key in captions_dict_train:
         for caption in captions_dict_train[key]:
             caption += [word_to_index["</s>"]] * (max_length_train - len(caption))
+
 
     for key in captions_dict_val:
         for caption in captions_dict_val[key]:

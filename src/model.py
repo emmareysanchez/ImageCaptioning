@@ -41,7 +41,7 @@ class MyModel(nn.Module):
         outputs = self.decoder(features, captions)
         return outputs
 
-    def generate_caption(self, image: torch.Tensor, vocab, max_len: int = 20) -> str:
+    def generate_caption(self, image: torch.Tensor, vocab, max_len: int = 50) -> str:
         """
         Generate a caption for an image.
 

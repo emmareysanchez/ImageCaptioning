@@ -50,7 +50,16 @@ def train_step(
 
         outputs = model(inputs, targets)
 
-        loss_value = loss(outputs, targets)
+        # print(outputs.shape)
+        # print(targets.shape)
+
+        outputs_reshaped = outputs.reshape(-1, outputs.shape[2])
+        targets_reshaped = targets.reshape(-1)
+
+        # print(outputs_reshaped.shape)
+        # print(targets_reshaped.shape)
+
+        loss_value = loss(outputs_reshaped, targets_reshaped)
 
         loss_value.backward()
         optimizer.step()

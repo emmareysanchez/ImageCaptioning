@@ -76,8 +76,10 @@ class RNN(nn.Module):
             words for each position in the sequence.
         """
         embed = self.dropout(self.embedding(captions))
-        embed = torch.cat((features.unsqueeze(1), embed), dim=1)
-        lstm_out, _ = self.lstm(embed)
+        new_embed = torch.cat((features.unsqueeze(1), embed), dim=1)
+
+        lstm_out, _ = self.lstm(new_embed)
         outputs = self.linear(lstm_out)
-        return outputs
+        
+        return outputs[:, 1:, :]
     
