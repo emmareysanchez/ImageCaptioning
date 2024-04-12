@@ -76,6 +76,7 @@ def val_step(
     writer: SummaryWriter,
     epoch: int,
     device: torch.device,
+    vocab: dict
 ) -> None:
     """
     This function validate the model.
@@ -101,9 +102,15 @@ def val_step(
         inputs = inputs.float()
         targets = targets.float()
 
-        outputs = model(inputs)
+        # We generate the caption
+        caption = model.generate_caption(inputs, vocab)
+        print(caption)
 
-        loss_value = loss(outputs, targets)
+        # We compute the loss
+        outputs = model(inputs, targets)
+        outputs_reshaped = outputs.reshape(-1, outputs.shape[2])
+        targets_reshaped = targets.reshape(-1)
+        loss_value = loss(outputs_reshaped, targets_reshaped)
 
         writer.add_scalar("Loss/val", loss_value.item(), epoch)
 

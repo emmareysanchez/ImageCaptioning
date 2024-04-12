@@ -18,7 +18,8 @@ def train_model(device: torch.device,
                 lr: float,
                 model: torch.nn.Module,
                 train_loader: DataLoader,
-                val_loader: DataLoader):
+                val_loader: DataLoader,
+                vocab: dict):
     """
     This function trains the model.
 
@@ -43,7 +44,7 @@ def train_model(device: torch.device,
     # train model
     for epoch in range(epochs):
         train_step(model, train_loader, loss, optimizer, writer, epoch, device)
-        # val_step(model, val_loader, loss, writer, epoch, device)
+        val_step(model, val_loader, loss, writer, epoch, device, vocab)
 
     # save model
     save_model(model, "model")

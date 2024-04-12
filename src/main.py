@@ -29,7 +29,7 @@ def main():
     """
     # Define hyperparameters
     batch_size = 32
-    num_epochs = 10
+    num_epochs = 1
     learning_rate = 0.001
     embedding_size = 256
     hidden_size = 256
@@ -53,9 +53,9 @@ def main():
         model.to(device)
 
         # train model
-        train_model(device, num_epochs, learning_rate, model, train_loader, val_loader)
+        train_model(device, num_epochs, learning_rate, model, train_loader, val_loader, word_to_index)
 
-        # TODO: Implement the evaluation of the model
+        # TODO: Implement the test of the model
 
     else:
         # We load the model from the models folder
