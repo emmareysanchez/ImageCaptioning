@@ -75,7 +75,7 @@ class MyModel(nn.Module):
 
                 caption.append(predicted)
 
-    def generate_batch_captions(self, images: torch.Tensor, vocab, max_len: int = 50) -> list:
+    def generate_batch_captions(self, images: torch.Tensor, word2_idx, idx2_word, max_len: int = 50) -> list:
         """
         Generate captions for a batch of images.
 
@@ -90,8 +90,8 @@ class MyModel(nn.Module):
         self.eval()
         with torch.no_grad():
             features = self.encoder(images)
-            start_token = vocab['<s>']
-            end_token = vocab['</s>']
+            start_token = word2_idx['<s>']
+            end_token = word2_idx['</s>']
 
             captions = [[start_token] for _ in range(images.shape[0])]
 
@@ -107,7 +107,7 @@ class MyModel(nn.Module):
                     captions[i].append(token.item())
 
             # If the word is not in the dictionary we don't add it
-            captions = [' '.join([vocab.get_word(word) for word in caption if word in vocab]) for caption in captions]
+            captions = [' '.join([idx2_word[token] for token in caption]) for caption in captions]
 
         return captions
         

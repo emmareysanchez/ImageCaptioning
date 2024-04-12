@@ -53,7 +53,7 @@ def main():
         model.to(device)
 
         # train model
-        train_model(device, num_epochs, learning_rate, model, train_loader, val_loader, word_to_index)
+        train_model(device, num_epochs, learning_rate, model, train_loader, val_loader, word_to_index, index_to_word)
 
         # TODO: Implement the test of the model
 
