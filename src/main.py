@@ -29,7 +29,7 @@ def main():
     """
     # Define hyperparameters
     batch_size = 32
-    num_epochs = 1
+    num_epochs = 10
     learning_rate = 0.001
     embedding_size = 256
     hidden_size = 256

@@ -106,6 +106,9 @@ class MyModel(nn.Module):
 
                     captions[i].append(token.item())
 
+            # remove the start token
+            captions = [caption[1:] for caption in captions]
+
             # If the word is not in the dictionary we don't add it
             captions = [' '.join([idx2_word[token] for token in caption]) for caption in captions]
 

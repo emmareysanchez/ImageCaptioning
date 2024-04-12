@@ -101,7 +101,7 @@ def val_step(
 
         # Inputs must be float
         inputs = inputs.float()
-        targets = targets.float()
+        targets = targets.long()
 
         # We generate the caption for the batch
         captions = model.generate_batch_captions(inputs,word2_idx, idx2_word)
