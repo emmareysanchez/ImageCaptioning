@@ -106,7 +106,8 @@ class MyModel(nn.Module):
 
                     captions[i].append(token.item())
 
-            captions = [' '.join([vocab[token] for token in caption]) for caption in captions]
+            # If the word is not in the dictionary we don't add it
+            captions = [' '.join([vocab.get_word(word) for word in caption if word in vocab]) for caption in captions]
 
         return captions
         
