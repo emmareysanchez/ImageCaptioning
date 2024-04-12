@@ -1,19 +1,18 @@
 # deep learning libraries
-from tkinter import Image
-from matplotlib import pyplot as plt
 import torch
 import numpy as np
 from torch.jit import RecursiveScriptModule
+# from tkinter import Image
+# from matplotlib import pyplot as plt
 
 # other libraries
 import os
 import random
 
-from collections import Counter
-from typing import List, Dict
+from typing import List
 
 # Libraries for evaluation
-from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
+from nltk.translate.bleu_score import sentence_bleu  # , SmoothingFunction
 from rouge import Rouge
 from pycocoevalcap.cider.cider import Cider
 from nltk.translate.meteor_score import meteor_score
@@ -34,8 +33,8 @@ def save_model(model: torch.nn.Module, name: str) -> None:
     It should create the 'models' if it doesn't already exist.
 
     Args:
-        model: pytorch model.
-        name: name of the model (without the extension, e.g. name.pt).
+        model (torch.nn.Module): pytorch model.
+        name (str): name of the model (without the extension, e.g. name.pt).
     """
 
     # create folder if it does not exist
@@ -54,10 +53,10 @@ def load_model(name: str) -> RecursiveScriptModule:
     This function is to load a model from the 'models' folder.
 
     Args:
-        name: name of the model to load.
+        name (str): name of the model to load.
 
     Returns:
-        model in torchscript.
+        RecursiveScriptModule: model in torch_script format.
     """
 
     # define model
@@ -71,7 +70,7 @@ def set_seed(seed: int) -> None:
     This function sets a seed and ensure a deterministic behavior.
 
     Args:
-        seed: seed number to fix radomness.
+        seed (int): seed number to fix radomness.
     """
 
     # set seed in numpy and random
@@ -96,13 +95,15 @@ def set_seed(seed: int) -> None:
 
 def calculate_bleu(reference_captions: List[str], candidate_caption: str) -> float:
     """
-    Calculate BLEU score for a single candidate caption against multiple reference captions.
+    Calculate BLEU score for a single candidate caption against
+    multiple reference captions.
 
     Args:
-    - reference_captions: A list of lists of reference captions
-    - candidate_caption: A string of the candidate caption
+        reference_captions (List[str]): A list of reference captions.
+        candidate_caption (str): The candidate caption as a string.
+
     Returns:
-    - BLEU score
+        float: BLEU score
     """
     # We tokenize the candidate caption to match the reference captions
     candidate_caption = candidate_caption.split()
@@ -113,14 +114,15 @@ def calculate_bleu(reference_captions: List[str], candidate_caption: str) -> flo
 
 def calculate_rouge(reference_captions: List[str], candidate_caption: str) -> float:
     """
-    Calculate ROUGE score for a single candidate caption against multiple reference captions.
+    Calculate ROUGE score for a single candidate caption against
+    multiple reference captions.
 
     Args:
-    - reference_captions: A list of reference captions
-    - candidate_caption: The candidate caption as a string
+        reference_captions (List[str]): A list of reference captions.
+        candidate_caption (str): The candidate caption as a string.
 
     Returns:
-    - ROUGE score dictionary
+        float: ROUGE score
     """
     rouge = Rouge()
     scores = [rouge.get_scores(candidate_caption, ref)[0] for ref in reference_captions]
@@ -128,20 +130,23 @@ def calculate_rouge(reference_captions: List[str], candidate_caption: str) -> fl
     # Example to extract ROUGE-L F1 score: scores[0]['rouge-l']['f']
     # We return the average ROUGE-L F1 score across all references.
 
-    # Hay más rouges en el diccionario y se puede cambiar el valor de 'l' por '1', '2', '3'...
+    # Hay más rouges en el diccionario y se puede cambiar el valor de 'l'
+    # por '1', '2', '3'...
     return sum([score["rouge-l"]["f"] for score in scores]) / len(scores)
 
 
-def calculate_cider(refs: Dict, hypo: Dict) -> float:
+def calculate_cider(refs: dict, hypo: dict) -> float:
     """
     Calculate CIDEr score for a set of hypotheses against references.
 
     Args:
-    - refs: Dictionary of reference captions with image_id as keys and a list of captions as values.
-    - hypo: Dictionary of hypothesis captions with image_id as keys and a single caption as value.
+        refs (dict): Dictionary of reference captions with image_id as keys
+        and a list of captions as values.
+        hypo (dict): Dictionary of hypothesis captions with image_id as keys
+        and a single caption as value.
 
     Returns:
-    - CIDEr score
+        float: CIDEr score
     """
     cider = Cider()
     score, scores = cider.compute_score(refs, hypo)
@@ -150,18 +155,21 @@ def calculate_cider(refs: Dict, hypo: Dict) -> float:
 
 def calculate_meteor(reference_captions: List[str], candidate_caption: str) -> float:
     """
-    Calculate METEOR score for a single candidate caption against multiple reference captions.
+    Calculate METEOR score for a single candidate caption against
+    multiple reference captions.
 
     Args:
-    - reference_captions: A list of reference captions (each as a single string).
-    - candidate_caption: The candidate caption as a single string.
+        reference_captions (List[str]): A list of reference captions.
+        candidate_caption (str): The candidate caption as a string.
 
     Returns:
-    - METEOR score as a float.
+        float: METEOR score
     """
-    # NLTK's meteor_score function takes a list of reference captions and a candidate caption,
-    # both must be strings.
-    # The function calculates the METEOR score for each reference separately and returns the highest score.
+    # NLTK's meteor_score function takes a list of reference captions and a candidate
+    # caption, both must be strings.
+
+    # The function calculates the METEOR score for each reference separately and returns
+    # the highest score.
     scores = [meteor_score([ref], candidate_caption) for ref in reference_captions]
     # In this case, we return the average METEOR score across all references.
     return sum(scores) / len(scores)
@@ -174,14 +182,30 @@ def load_data(
     drop_last: bool = True,
     num_workers: int = 0,
 ) -> tuple[DataLoader, DataLoader, DataLoader, float, float]:
+    """
+    This function loads the data and preprocesses it.
+
+    Args:
+
+        path (str): path to the data.
+        batch_size (int): size of the batch.
+        shuffle (bool): whether to shuffle the data.
+        drop_last (bool): whether to drop the last batch if it is smaller
+        than the batch size.
+        num_workers (int): number of workers to load the data.
+
+    Returns:
+        tuple[DataLoader, DataLoader, DataLoader, float, float]: tuple with
+        the training, validation and test dataloaders, and the word_to_index
+        and index_to_word dictionaries.
+    """
 
     # load and preprocess data
     download_and_prepare_flickr8k_dataset(path)
-    captions_path = path
+    captions_path = path + '/flickr8k'
     captions_dict_train, captions_dict_val, captions_dict_test, word_list = (
         load_and_process_captions_flickr8k(captions_path)
     )
-
 
     # Create lookup tables
     word_to_index, index_to_word = create_lookup_tables(word_list)
@@ -212,16 +236,14 @@ def load_data(
         for key in captions_dict_train
     }
 
-    # FIXME: hacerlo en val y test
+    # TODO: hacerlo en val y test
 
     train_path = f"{path}/flickr8k/train"
     val_path = f"{path}/flickr8k/val"
     test_path = f"{path}/flickr8k/test"
 
     # Create for training, test and validation datasets
-    train_dataset = ImageAndCaptionsDataset(
-        train_path, captions_dict_train
-    )
+    train_dataset = ImageAndCaptionsDataset(train_path, captions_dict_train)
     val_dataset = ImageAndCaptionsDataset(val_path, captions_dict_val)
     test_dataset = ImageAndCaptionsDataset(test_path, captions_dict_test)
 
@@ -251,18 +273,19 @@ def load_data(
     return train_loader, val_loader, test_loader, word_to_index, index_to_word
 
 
-def captions_to_indices(captions: dict, word_to_index:dict) -> dict:
+def captions_to_indices(captions: dict, word_to_index: dict) -> dict:
     """
     This function converts captions to indices.
 
     Args:
-        captions: dictionary with the captions.
+        captions (dict): dictionary with the captions.
             - the key is the image name.
             - the value is a list of captions.
-        word_to_index: dictionary to convert words to indices.
+
+        word_to_index (dict): dictionary to convert words to indices.
 
     Returns:
-        dictionary with the captions as indices.
+        dict: dictionary with the captions as indices.
     """
     # Change captions to indices
     # The key will be the image name and the value will be a list of lists
@@ -284,11 +307,11 @@ def indices_to_captions(captions: dict, index_to_word: dict) -> dict:
     This function converts captions from indices to words.
 
     Args:
-        captions: dictionary with the captions as indices.
-        index_to_word: dictionary to convert indices to words.
+        captions (dict): dictionary with the captions as indices.
+        index_to_word (dict): dictionary to convert indices to words.
 
     Returns:
-        dictionary with the captions as words.
+        dict: dictionary with the captions as words.
     """
     # Change captions to words
     captions_words = {
@@ -308,34 +331,35 @@ def save_images_with_captions(
     This function saves images with their captions generated by the model.
 
     Args:
-        path: path to the folder containing the images.
-        model: model to generate captions.
-        index_to_word: dictionary to convert indices to words.
-        num_images: number of images to save.
+        path (str): path to the folder containing the images.
+        model (RecursiveScriptModule): model to generate captions.
+        index_to_word (dict): dictionary to convert indices to words.
+        num_images (int): number of images to save.
+
     """
+    # XXX: See if this is necessary and if not, remove it
 
-    # Get the list of images
-    images = os.listdir(path)
+    # # Get the list of images
+    # images = os.listdir(path)
 
-    # Select a random sample of images
-    images = random.sample(images, num_images)
+    # # Select a random sample of images
+    # images = random.sample(images, num_images)
 
-    # Iterate over the images
-    for image in images:
+    # # Iterate over the images
+    # for image in images:
 
-        # Load the image
-        image_path = os.path.join(path, image)
-        img = Image.open(image_path)
+    #     # Load the image
+    #     image_path = path + "/" + image
+    #     img = Image.open(image_path)
 
-        # TODO: Implement the function generate_caption before
-        # # Generate the caption
-        # # caption = model.generate_caption(img)
+    #     # Generate the caption
+    #     caption = model.generate_caption(img)
 
-        # # Save the image with the caption
-        # plt.imshow(img)
-        # plt.title(caption)
-        # plt.savefig(f"results/{image}")
-        # plt.close()
+    #     # Save the image with the caption
+    #     plt.imshow(img)
+    #     plt.title(caption)
+    #     plt.savefig(f"results/{image}")
+    #     plt.close()
 
     return None
 
@@ -345,11 +369,12 @@ def generate_caption(output: torch.Tensor, index_to_word: dict) -> str:
     This function generates a caption from the output of the model.
 
     Args:
-        output: output of the model.
-        index_to_word: dictionary to convert indices to words.
+        output (torch.Tensor): Tensor with the log-probabilities of the predicted
+        words for each position in the sequence.
+        index_to_word (dict): dictionary to convert indices to words.
 
     Returns:
-        caption as a string.
+        str: caption generated for the image.
     """
 
     # Get the indices of the words
@@ -360,36 +385,37 @@ def generate_caption(output: torch.Tensor, index_to_word: dict) -> str:
 
     return caption
 
-def generate_caption2(self, outputs):
-        """
-        Generate a caption for each batch of features in the input.
 
-        Args:
-            outputs (torch.Tensor): Tensor with the log-probabilities of the predicted words for each position in the sequence.
+def generate_caption2(self, outputs: torch.Tensor) -> List[str]:
+    """
+    Generate a caption for each batch of features in the input.
 
-        Returns:
-            List[str]: List of captions generated for each image in the batch.
-        """
-        # Initialize the list to store the generated captions
-        captions = []
-        
-        # Get the predicted words for each position in the sequence
-        predicted_words = outputs.argmax(2)
-        
-        # Iterate over the batch
-        for prediction in predicted_words:
-            # Initialize the caption for the current image
-            caption = []
-            for word_index in prediction:
-                # Get the corresponding word from the vocabulary
-                word = self.vocab.itos[word_index.item()]
-                # Append the word to the caption
-                caption.append(word)
-                # If the word is the end token, stop the caption
-                if word == "</s>":
-                    break
-            # Join the words in the caption and append it to the list
-            captions.append(" ".join(caption))
-        
-        return captions
+    Args:
+        outputs (torch.Tensor): Tensor with the log-probabilities of the predicted
+        words for each position in the sequence.
 
+    Returns:
+        List[str]: List of captions generated for each batch of features.
+    """
+    # Initialize the list to store the generated captions
+    captions = []
+
+    # Get the predicted words for each position in the sequence
+    predicted_words = outputs.argmax(2)
+
+    # Iterate over the batch
+    for prediction in predicted_words:
+        # Initialize the caption for the current image
+        caption = []
+        for word_index in prediction:
+            # Get the corresponding word from the vocabulary
+            word = self.vocab.itos[word_index.item()]
+            # Append the word to the caption
+            caption.append(word)
+            # If the word is the end token, stop the caption
+            if word == "</s>":
+                break
+        # Join the words in the caption and append it to the list
+        captions.append(" ".join(caption))
+
+    return captions
