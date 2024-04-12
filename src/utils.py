@@ -255,20 +255,9 @@ def load_data(
             caption += [word_to_index["</s>"]] * (max_length_test - len(caption))
 
     # We only keep the first caption
-    captions_dict_train = {
-        key: captions[0] for captions in captions_dict_train[key]
-        for key in captions_dict_train
-    }
-
-    captions_dict_val = {
-        key: captions[0] for captions in captions_dict_val[key]
-        for key in captions_dict_val
-    }
-
-    captions_dict_test = {
-        key: captions[0] for captions in captions_dict_test[key]
-        for key in captions_dict_test
-    }
+    captions_dict_train = {key: captions_dict_train[key][0] for key in captions_dict_train}
+    captions_dict_val = {key: captions_dict_val[key][0] for key in captions_dict_val}
+    captions_dict_test = {key: captions_dict_test[key][0] for key in captions_dict_test}
 
     train_path = f"{path}/flickr8k/train"
     val_path = f"{path}/flickr8k/val"
