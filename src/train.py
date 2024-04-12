@@ -3,10 +3,6 @@ import torch
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
-# other libraries
-from tqdm.auto import tqdm
-from typing import Final
-
 # own modules
 from src.utils import set_seed, save_model
 from src.train_functions import train_step, val_step
@@ -23,7 +19,18 @@ def train_model(device: torch.device,
                 model: torch.nn.Module,
                 train_loader: DataLoader,
                 val_loader: DataLoader):
-    
+    """
+    This function trains the model.
+
+    Args:
+        device (torch.device): device to use.
+        epochs (int): number of epochs.
+        lr (float): learning rate.
+        model (torch.nn.Module): model to train.
+        train_loader (DataLoader): train data loader.
+        val_loader (DataLoader): validation data loader.
+    """
+
     # define optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
@@ -40,4 +47,3 @@ def train_model(device: torch.device,
 
     # save model
     save_model(model, "model")
-

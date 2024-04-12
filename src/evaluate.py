@@ -8,7 +8,7 @@ from typing import Final
 
 # own modules
 from src.utils import set_seed, load_model
-# TODO: Import your own modules here
+# TODO: Import necessary libraries
 
 # static variables
 DATA_PATH: Final[str] = "data"
@@ -21,10 +21,11 @@ set_seed(42)
 
 def main() -> None:
     """
-    This function is the main program.
+    This function is the main program. It loads the data, the model,
+    and evaluates it.
     """
 
-    # TODO
+    # TODO: Make the evaluation of the model
 
 
 if __name__ == "__main__":

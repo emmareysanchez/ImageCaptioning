@@ -4,35 +4,41 @@ import torch.nn as nn
 from src.encoder import ModifiedVGG19
 from src.decoder import RNN
 
+
 class MyModel(nn.Module):
+    """
+    A model that combines an encoder and a decoder for generating image captions.
+
+    Attributes:
+        encoder (ModifiedVGG19): The encoder model.
+        decoder (RNN): The decoder model.
+    """
     def __init__(self, encoder_params, decoder_params):
         """
-        Inicializa los componentes del modelo MyModel.
+        Initialize the model.
 
         Args:
-            encoder_params (dict): Un diccionario con los parámetros necesarios para inicializar el encoder.
-            decoder_params (dict): Un diccionario con los parámetros necesarios para inicializar el decoder.
+            encoder_params (dict): Dictionary containing the parameters
+            for the encoder.
+            decoder_params (dict): Dictionary containing the parameters
+            for the decoder.
         """
         super(MyModel, self).__init__()
         self.encoder = ModifiedVGG19(**encoder_params)
         self.decoder = RNN(**decoder_params)
 
-    def forward(self, images):
+    def forward(self, images: torch.Tensor) -> torch.Tensor:
         """
-        Define el paso hacia adelante del modelo.
+        Forward pass of the model.
 
         Args:
-            images (torch.Tensor): Tensor que contiene las imágenes de entrada.
-            captions (torch.Tensor): Tensor que contiene las captions (subtítulos) de entrada asociadas a las imágenes.
-            caption_lengths (List[int]): Lista que contiene las longitudes de las captions.
+            images (torch.Tensor): The input images.
 
         Returns:
-            torch.Tensor: El resultado del decoder.
+            torch.Tensor: The predicted captions.
         """
         features = self.encoder(images)
 
-        print(features.shape)
+        print('MyModel features:', features.shape)
         outputs = self.decoder(features)
         return outputs
-
-    
