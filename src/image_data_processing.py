@@ -1,30 +1,11 @@
 # deep learning libraries
-import torch
-import numpy as np
-from torch.utils.data import Dataset, DataLoader, random_split
 from torchvision import transforms
-from torch.jit import RecursiveScriptModule
 
 # other libraries
 import os
-import random
-import requests
-import tarfile
-import shutil
-from requests.models import Response
-from tarfile import TarFile
-from PIL import Image
-from torchvision import datasets, transforms
-from torch.utils.data import DataLoader
-import kaggle
-
-import os
-import requests
-import tarfile
 import kaggle
 import shutil
 from PIL import Image
-from torchvision import transforms
 
 
 def download_and_prepare_flickr8k_dataset(path: str) -> None:
@@ -32,7 +13,7 @@ def download_and_prepare_flickr8k_dataset(path: str) -> None:
     Download and prepare the Flickr8k dataset from Kaggle and process it.
 
     Args:
-        path: Path to save the processed data.
+        path (str): Path to save the processed data.
     """
 
     # Kaggle dataset identifier
@@ -48,7 +29,9 @@ def download_and_prepare_flickr8k_dataset(path: str) -> None:
     # Download dataset
     # Only download the dataset if it hasn't been downloaded yet
     if not os.path.exists(dataset_path):
-        kaggle.api.dataset_download_files(dataset_identifier, path=dataset_path, unzip=True)
+        kaggle.api.dataset_download_files(dataset_identifier,
+                                          path=dataset_path,
+                                          unzip=True)
 
         # Prepare directories for processed data
         if not os.path.exists(f"{dataset_path}/train"):
@@ -64,10 +47,10 @@ def download_and_prepare_flickr8k_dataset(path: str) -> None:
         images_list = os.listdir(f"{dataset_path}/Images")
         # Split into train and validation
         # 80% train, 20% validation
-        test_images = images_list[int(len(images_list) * 0.8) :]
+        test_images = images_list[int(len(images_list) * 0.8):]
         train_images = images_list[: int(len(images_list) * 0.8)]
         # Of the train images, 80% will be used for training and 20% for validation
-        val_images = train_images[int(len(train_images) * 0.8) :]
+        val_images = train_images[int(len(train_images) * 0.8):]
         train_images = train_images[: int(len(train_images) * 0.8)]
         # Process and save images
         list_splits = ["train", "val", "test"]
@@ -94,7 +77,7 @@ def download_and_prepare_mscoco_dataset(path: str) -> None:
     Download and prepare the MSCOCO dataset from Kaggle and process it.
 
     Args:
-        path: Path to save the processed data.
+        path (str): Path to save the processed data.
     """
 
     # Kaggle dataset identifier
@@ -112,7 +95,7 @@ def download_and_prepare_mscoco_dataset(path: str) -> None:
     # Download dataset
     kaggle.api.dataset_download_files(dataset_identifier, path=dataset_path, unzip=True)
 
-    # TODO: mscoco folders are not named correctly, fix this
+    # FIXME: mscoco folders are not named correctly
 
     # change name of the folder from coco2017 to mscoco:
     # os.rename(f"{dataset_path}/coco2017", f"{dataset_path}/mscoco")
