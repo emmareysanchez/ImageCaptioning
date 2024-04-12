@@ -102,10 +102,8 @@ def val_step(
         inputs = inputs.float()
         targets = targets.float()
 
-        # We generate the caption foreach input
-        for i in range(inputs.shape[0]):
-            caption = model.generate_caption(model, inputs[i], vocab)
-            print(caption)
+        # We generate the caption for the batch
+        captions = model.generate_batch_captions(inputs, vocab)
 
         # We compute the loss
         outputs = model(inputs, targets)
