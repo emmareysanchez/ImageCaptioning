@@ -4,10 +4,9 @@ import numpy as np
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
-# other libraries
-from typing import Optional
-
-from src.utils import generate_caption
+# # other libraries
+# from typing import Optional
+# from src.utils import generate_caption
 
 
 @torch.enable_grad()
@@ -24,13 +23,13 @@ def train_step(
     This function train the model.
 
     Args:
-        model: model to train.
-        train_data: dataloader of train data.
-        loss: loss function.
-        optimizer: optimizer.
-        writer: writer for tensorboard.
-        epoch: epoch of the training.
-        device: device for running operations.
+        model (torch.nn.Module): model to train.
+        train_data (DataLoader): dataloader of training data.
+        loss (torch.nn.Module): loss function.
+        optimizer (torch.optim.Optimizer): optimizer.
+        writer (SummaryWriter): writer for tensorboard.
+        epoch (int): epoch of the training.
+        device (torch.device): device for running operations.
     """
     model.to(device)
     # Model in training mode
@@ -73,12 +72,12 @@ def val_step(
     This function validate the model.
 
     Args:
-        model: model to validate.
-        val_data: dataloader of validation data.
-        loss: loss function.
-        writer: writer for tensorboard.
-        epoch: epoch of the validation.
-        device: device for running operations.
+        model (torch.nn.Module): model to validate.
+        val_data (DataLoader): dataloader of validation data.
+        loss (torch.nn.Module): loss function.
+        writer (SummaryWriter): writer for tensorboard.
+        epoch (int): epoch of the validation.
+        device (torch.device): device for running operations.
     """
     model.to(device)
     # Model in evaluation mode
@@ -110,9 +109,9 @@ def t_step(
     This function predict the model.
 
     Args:
-        model: model to predict.
-        data: dataloader of data.
-        device: device for running operations.
+        model (torch.nn.Module): model to validate.
+        data (DataLoader): dataloader of validation data.
+        device (torch.device): device for running operations.
 
     Returns:
         np.ndarray: predictions of the model.
