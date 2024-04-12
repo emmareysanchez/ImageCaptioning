@@ -8,6 +8,7 @@ from src.utils import set_seed, save_model
 from src.train_functions import train_step, val_step
 
 
+
 # set device and seed
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 set_seed(42)
@@ -41,7 +42,7 @@ def train_model(device: torch.device,
     # define tensorboard writer
     writer = SummaryWriter()
 
-    # train model
+    # train model showing progress
     for epoch in range(epochs):
         train_step(model, train_loader, loss, optimizer, writer, epoch, device)
         val_step(model, val_loader, loss, writer, epoch, device, vocab)

@@ -67,8 +67,46 @@ class MyModel(nn.Module):
                 outputs = self.decoder(features, captions)
                 predicted = outputs.argmax(2)[-1].item()
 
+                # Add the predicted word to the caption
+        
+
                 if predicted == end_token:
                     break
 
                 caption.append(predicted)
+
+        def generate_batch_captions(self, images: torch.Tensor, vocab, max_len: int = 50) -> list:
+            """
+            Generate captions for a batch of images.
+
+            Args:
+                images (torch.Tensor): The input images.
+                vocab (Vocab): The vocabulary object.
+                max_len (int): The maximum length of the caption.
+
+            Returns:
+                list: The generated captions.
+            """
+            self.eval()
+            with torch.no_grad():
+                features = self.encoder(images)
+                start_token = vocab('<s>')
+                end_token = vocab('</s>')
+
+                captions = [[start_token] for _ in range(images.shape[0])]
+
+                for _ in range(max_len):
+                    captions_tensor = torch.tensor(captions).long()
+                    outputs = self.decoder(features, captions_tensor)
+                    predicted = outputs.argmax(2)[:, -1]
+
+                    for i, token in enumerate(predicted):
+                        if token.item() == end_token:
+                            continue
+
+                        captions[i].append(token.item())
+
+                captions = [' '.join([vocab.idx2word[token] for token in caption]) for caption in captions]
+
+            return captions
             
