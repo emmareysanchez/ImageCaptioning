@@ -105,7 +105,7 @@ def val_step(
 
         # We generate the caption for the batch
         captions = model.generate_batch_captions(inputs,word2_idx, idx2_word)
-        print(captions)
+        print(captions[0])
 
         # We compute the loss
         outputs = model(inputs, targets)
