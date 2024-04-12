@@ -76,7 +76,8 @@ def val_step(
     writer: SummaryWriter,
     epoch: int,
     device: torch.device,
-    vocab: dict
+    word2_idx: dict,
+    idx2_word: dict
 ) -> None:
     """
     This function validate the model.
@@ -103,7 +104,8 @@ def val_step(
         targets = targets.float()
 
         # We generate the caption for the batch
-        captions = model.generate_batch_captions(inputs, vocab)
+        captions = model.generate_batch_captions(inputs,word2_idx, idx2_word)
+        print(captions)
 
         # We compute the loss
         outputs = model(inputs, targets)
