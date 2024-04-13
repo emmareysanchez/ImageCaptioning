@@ -91,7 +91,9 @@ class MyModel(nn.Module):
         """
         self.eval()
         with torch.no_grad():
+            print("images", images.shape)  # images torch.Size([1, 3, 224, 224])
             features = self.encoder(images)
+            print("features", features.shape)  # features torch.Size([1, 256])
             start_token = word2_idx["<s>"]
             end_token = word2_idx["</s>"]
 
@@ -99,12 +101,32 @@ class MyModel(nn.Module):
 
             for _ in range(max_len):
                 captions_tensor = torch.tensor(captions).long()
+
+                print(
+                    "captions_tensor", captions_tensor.shape
+                )  # captions_tensor torch.Size([1, 1])
+
+                # to image device
+                captions_tensor = captions_tensor.to(images.device)
+                features = features.to(images.device)
+
                 outputs = self.decoder(features, captions_tensor)
-                predicted = outputs.argmax(2)[:, -1]
+                print("outputs", outputs.shape)  # outputs torch.Size([1, 1, 7268])
+                # the outputs are the probabilities of the next word
+                # show the 10 most probable words
+                _, indices = torch.topk(outputs, 10)
+
+                # initialize predicted tensor
+                predicted = torch.zeros(images.shape[0], 1).long()
+
+                for i in range(indices.shape[0]):
+                    # select the most probable word
+                    predicted[i] = indices[i, 0, 1]
+                    print([idx2_word[idx.item()] for idx in indices[i, 0, :]])
 
                 for i, token in enumerate(predicted):
                     if token.item() == end_token:
-                        continue
+                        break
 
                     captions[i].append(token.item())
 
