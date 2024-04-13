@@ -35,7 +35,8 @@ class ModifiedVGG19(nn.Module):
         # Replace the last FC layer to match the size of the embedding
         self.classifier = nn.Sequential(
             nn.Linear(num_features, embedding_dim),
-            # You can add more layers here if necessary
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.5)
         )
 
         # Freeze the parameters of the features for finetuning
