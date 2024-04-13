@@ -12,6 +12,8 @@ from src.utils import set_seed, load_model, generate_caption, load_data
 from src.model import MyModel
 
 # TODO: Import necessary libraries
+from PIL import Image
+import matplotlib.pyplot as plt
 
 # static variables
 DATA_PATH: Final[str] = "data"
@@ -76,11 +78,18 @@ def main() -> None:
                 caption = generate_caption(outputs[i], index_to_word)
                 real_caption = target_caption(targets[i], index_to_word)
 
-                # show image with the cation
-                image = inputs[0].cpu().numpy().transpose((1, 2, 0))
+                # Save image and caption in "solution" folder
+                image = inputs[i].cpu().numpy().transpose((1, 2, 0))
                 plt.imshow(image)
                 plt.title(f"Prediction: {caption}\nReal: {real_caption}")
-                plt.show()
+                plt.savefig(f"solution/{i}.png")
+
+
+                # # show image with the cation
+                # image = inputs[0].cpu().numpy().transpose((1, 2, 0))
+                # plt.imshow(image)
+                # plt.title(f"Prediction: {caption}\nReal: {real_caption}")
+                # plt.show()
 
 
 def target_caption(targets, index_to_word):
@@ -94,13 +103,14 @@ def target_caption(targets, index_to_word):
     Returns:
         str: The target caption.
     """
-    # Concat the words without the until the </s>
+    # Concat the words without the until the </s> and avoiding <s>
     caption = ""
-    for i in targets:
-        if i == index_to_word["</s>"]:
+    for i in targets[1:]:
+        if index_to_word[i.item()] == "</s>":
             break
         caption += index_to_word[i.item()] + " "
     return caption
+
 
 
 if __name__ == "__main__":

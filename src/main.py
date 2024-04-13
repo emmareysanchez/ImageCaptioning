@@ -5,8 +5,6 @@ from src.train import train_model
 from src.utils import load_data
 
 # # Libraries to show the image and add the caption
-# from PIL import Image
-# import matplotlib.pyplot as plt
 
 from src.utils import set_seed
 
