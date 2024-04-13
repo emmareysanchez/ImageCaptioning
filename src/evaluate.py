@@ -57,25 +57,30 @@ def main() -> None:
     model.eval()
 
     # evaluate model
-    for inputs, targets in test_loader:
-        inputs = inputs.to(device)
-        targets = targets.to(device)
+    with torch.no_grad():
+        for inputs, targets in test_loader:
+            inputs = inputs.to(device)
+            targets = targets.to(device)
 
-        # Inputs must be float
-        inputs = inputs.float()
-        targets = targets.long()
+            # Inputs must be float
+            inputs = inputs.float()
+            targets = targets.long()
 
-        # outputs = model(inputs, targets)
+            outputs = model(inputs, targets)
+            print(outputs.shape)
 
-        # generate_caption
-        caption = model.generate_batch_captions(inputs, word_to_index, index_to_word)
-        # caption = generate_caption(outputs, index_to_word)
-        print(caption)
+            # generate_caption
+            # caption = model.generate_batch_captions(inputs, word_to_index, index_to_word)
+            caption = generate_caption(outputs, index_to_word)
+            # Show the dimensions of the caption
+            print(len(caption))
+            print(caption)
 
-        # show image
-        image = inputs[0].cpu().numpy().transpose((1, 2, 0))
-        plt.imshow(image)
-        plt.show()
+            # show image with the cation
+            image = inputs[0].cpu().numpy().transpose((1, 2, 0))
+            plt.imshow(image)
+            plt.title
+            plt.show()
 
 
 def target_caption(targets, index_to_word):
