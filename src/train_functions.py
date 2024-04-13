@@ -121,6 +121,8 @@ def t_step(
     model: torch.nn.Module,
     data: DataLoader,
     device: torch.device,
+    word2_idx: dict,
+    idx2_word: dict
 ) -> np.ndarray:
     """
     This function predict the model.
@@ -139,15 +141,17 @@ def t_step(
 
     predictions = []
 
-    for inputs, _ in data:
+    for inputs, targets in data:
 
         inputs = inputs.to(device)
 
         # Inputs must be float
         inputs = inputs.float()
 
-        outputs = model(inputs)
+        # get the captions of the images of the batch
+        captions = model.generate_batch_captions(inputs, word2_idx, idx2_word)
 
-        predictions.append(outputs.cpu().numpy())
+        # Add the captions to the list of predictions
+        predictions.extend(captions)
 
     # TODO: use and implement evaluation metrics to asses the predictions
