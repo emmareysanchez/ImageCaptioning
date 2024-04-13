@@ -12,8 +12,10 @@ from src.utils import set_seed, load_model, generate_caption, load_data
 from src.model import MyModel
 
 # TODO: Import necessary libraries
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 import matplotlib.pyplot as plt
+import numpy as np
+import os
 
 # static variables
 DATA_PATH: Final[str] = "data"
@@ -55,12 +57,19 @@ def main() -> None:
     model = MyModel(encoder_params, decoder_params)
     model.load_model("model")
     # model = load_model("model")
+
+    solution_dir = "solution"
+    if not os.path.exists(solution_dir):
+        os.makedirs(solution_dir)
+
     model = model.to(device)
     model.eval()
 
     # evaluate model
     with torch.no_grad():
+        batch_idx = 0
         for inputs, targets in test_loader:
+            batch_idx += 1
             inputs = inputs.to(device)
             targets = targets.to(device)
 
@@ -79,17 +88,18 @@ def main() -> None:
                 real_caption = target_caption(targets[i], index_to_word)
 
                 # Save image and caption in "solution" folder
+                # Will have to create it if necessary
                 image = inputs[i].cpu().numpy().transpose((1, 2, 0))
+                
+                image = (image * 255).astype(np.uint8)  # Assuming image was normalized
+                image = Image.fromarray(image)
+
+                plt.figure()
                 plt.imshow(image)
-                plt.title(f"Prediction: {caption}\nReal: {real_caption}")
-                plt.savefig(f"solution/{i}.png")
-
-
-                # # show image with the cation
-                # image = inputs[0].cpu().numpy().transpose((1, 2, 0))
-                # plt.imshow(image)
-                # plt.title(f"Prediction: {caption}\nReal: {real_caption}")
-                # plt.show()
+                plt.title(f"Predicted: {caption}\nReal: {real_caption}")
+                plt.axis("off")
+                plt.savefig(f"{solution_dir}/image_{batch_idx}_{i}.png")
+                plt.close()
 
 
 def target_caption(targets, index_to_word):
