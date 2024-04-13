@@ -40,19 +40,19 @@ def main() -> None:
     (train_loader, val_loader, test_loader, word_to_index, index_to_word) = load_data(
         DATA_PATH, batch_size
     )
-    # encoder_params = {"embedding_dim": embedding_size}
-    # decoder_params = {
-    #     "vocab_size": len(word_to_index),
-    #     "embedding_dim": embedding_size,
-    #     "hidden_dim": hidden_size,
-    #     "num_layers": num_layers,
-    #     "start_token_index": word_to_index["<s>"],
-    #     "end_token_index": word_to_index["</s>"],
-    #     "dropout": drop_prob,
-    # }
-    # model = MyModel(encoder_params, decoder_params)
-    # model.load_model("model")
-    model = load_model("model")
+    encoder_params = {"embedding_dim": embedding_size}
+    decoder_params = {
+        "vocab_size": len(word_to_index),
+        "embedding_dim": embedding_size,
+        "hidden_dim": hidden_size,
+        "num_layers": num_layers,
+        "start_token_index": word_to_index["<s>"],
+        "end_token_index": word_to_index["</s>"],
+        "dropout": drop_prob,
+    }
+    model = MyModel(encoder_params, decoder_params)
+    model.load_model("model")
+    # model = load_model("model")
     model = model.to(device)
     model.eval()
 
@@ -65,13 +65,11 @@ def main() -> None:
         inputs = inputs.float()
         targets = targets.long()
 
-        outputs = model(inputs, targets)
+        # outputs = model(inputs, targets)
 
         # generate_caption
-        # caption = model.generate_caption(
-        #     inputs, index_to_word, word_to_index, max_len=50
-        # )
-        caption = generate_caption(outputs, index_to_word)
+        caption = model.generate_batch_captions(inputs, word_to_index, index_to_word)
+        # caption = generate_caption(outputs, index_to_word)
         print(caption)
 
         # show image

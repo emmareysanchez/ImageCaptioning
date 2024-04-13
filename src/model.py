@@ -91,20 +91,52 @@ class MyModel(nn.Module):
         """
         self.eval()
         with torch.no_grad():
+<<<<<<< HEAD
             x = self.encoder(images)
             states = None
+=======
+            print("images", images.shape)  # images torch.Size([1, 3, 224, 224])
+            features = self.encoder(images)
+            print("features", features.shape)  # features torch.Size([1, 256])
+>>>>>>> 67a1aa0b592b5dfafeb61ed1df66cd4102869e2a
             start_token = word2_idx["<s>"]
             end_token = word2_idx["</s>"]
 
             captions = [[start_token] for _ in range(images.shape[0])]
             for _ in range(max_len):
+<<<<<<< HEAD
                 hidden, states = self.decoder.lstm(x, states)
                 output = self.decoder.linear(hidden) # (batch_size, vocab_size)
                 predicted = output.argmax(1)
+=======
+                captions_tensor = torch.tensor(captions).long()
+
+                print(
+                    "captions_tensor", captions_tensor.shape
+                )  # captions_tensor torch.Size([1, 1])
+
+                # to image device
+                captions_tensor = captions_tensor.to(images.device)
+                features = features.to(images.device)
+
+                outputs = self.decoder(features, captions_tensor)
+                print("outputs", outputs.shape)  # outputs torch.Size([1, 1, 7268])
+                # the outputs are the probabilities of the next word
+                # show the 10 most probable words
+                _, indices = torch.topk(outputs, 10)
+
+                # initialize predicted tensor
+                predicted = torch.zeros(images.shape[0], 1).long()
+
+                for i in range(indices.shape[0]):
+                    # select the most probable word
+                    predicted[i] = indices[i, 0, 1]
+                    print([idx2_word[idx.item()] for idx in indices[i, 0, :]])
+>>>>>>> 67a1aa0b592b5dfafeb61ed1df66cd4102869e2a
 
                 for i, token in enumerate(predicted):
                     if token.item() == end_token:
-                        continue
+                        break
 
                     captions[i].append(token.item())
 
