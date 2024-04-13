@@ -94,7 +94,13 @@ def target_caption(targets, index_to_word):
     Returns:
         str: The target caption.
     """
-    return " ".join([index_to_word[str(i.item())] for i in targets])
+    # Concat the words without the until the </s>
+    caption = ""
+    for i in targets:
+        if i == index_to_word["</s>"]:
+            break
+        caption += index_to_word[i.item()] + " "
+    return caption
 
 
 if __name__ == "__main__":

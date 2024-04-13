@@ -402,10 +402,14 @@ def generate_caption(output: torch.Tensor, index_to_word: dict) -> str:
 
     # Get the indices of the words
     indices = torch.argmax(output, dim=1)
-    print(indices)
 
-    # Convert indices to words
-    caption = " ".join([index_to_word[index.item()] for index in indices])
+    # Convert indices to words until end of sentence
+    caption = " "
+    for index in indices:
+        word = index_to_word[index.item()]
+        if word == "</s>":
+            break
+        caption += word + " "
 
 
     return caption
