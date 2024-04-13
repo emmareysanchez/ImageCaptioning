@@ -67,20 +67,20 @@ def main() -> None:
             targets = targets.long()
 
             outputs = model(inputs, targets)
-            print(outputs.shape)
 
             # generate_caption
             # caption = model.generate_batch_captions(inputs, word_to_index, index_to_word)
-            caption = generate_caption(outputs, index_to_word)
-            # Show the dimensions of the caption
-            print(len(caption))
-            print(caption)
 
-            # show image with the cation
-            image = inputs[0].cpu().numpy().transpose((1, 2, 0))
-            plt.imshow(image)
-            plt.title
-            plt.show()
+            # Foreach output
+            for i in range(len(outputs)):
+                caption = generate_caption(outputs[i], index_to_word)
+                real_caption = target_caption(targets[i], index_to_word)
+
+                # show image with the cation
+                image = inputs[0].cpu().numpy().transpose((1, 2, 0))
+                plt.imshow(image)
+                plt.title(f"Prediction: {caption}\nReal: {real_caption}")
+                plt.show()
 
 
 def target_caption(targets, index_to_word):
