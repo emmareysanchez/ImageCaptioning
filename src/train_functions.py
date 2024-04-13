@@ -113,8 +113,8 @@ def val_step(
         targets_reshaped = targets.reshape(-1)
         loss_value = loss(outputs_reshaped, targets_reshaped)
 
-        caption = generate_caption(outputs, idx2_word)
-        print(caption)
+        # caption = generate_caption(outputs, idx2_word)
+        # print(caption)
 
         writer.add_scalar("Loss/val", loss_value.item(), epoch)
 

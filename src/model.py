@@ -91,16 +91,16 @@ class MyModel(nn.Module):
         """
         self.eval()
         with torch.no_grad():
-            features = self.encoder(images)
+            x = self.encoder(images)
+            states = None
             start_token = word2_idx["<s>"]
             end_token = word2_idx["</s>"]
 
             captions = [[start_token] for _ in range(images.shape[0])]
-
             for _ in range(max_len):
-                captions_tensor = torch.tensor(captions).long()
-                outputs = self.decoder(features, captions_tensor)
-                predicted = outputs.argmax(2)[:, -1]
+                hidden, states = self.decoder.lstm(x, states)
+                output = self.decoder.linear(hidden) # (batch_size, vocab_size)
+                predicted = output.argmax(1)
 
                 for i, token in enumerate(predicted):
                     if token.item() == end_token:
@@ -108,6 +108,8 @@ class MyModel(nn.Module):
 
                     captions[i].append(token.item())
 
+                x = self.decoder.embedding(predicted)
+            
             # remove the start token
             captions = [caption[1:] for caption in captions]
 

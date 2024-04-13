@@ -231,6 +231,10 @@ def create_lookup_tables(words: List[str]) -> Tuple[Dict[str, int], Dict[int, st
     int_to_vocab: Dict[int, str] = {ii: word for ii, word in enumerate(sorted_vocab)}
     vocab_to_int: Dict[str, int] = {word: ii for ii, word in int_to_vocab.items()}
 
+    # Add the PAD token
+    vocab_to_int['<PAD>'] = len(vocab_to_int)
+    int_to_vocab[len(int_to_vocab)] = '<PAD>'
+
     return vocab_to_int, int_to_vocab
 
 

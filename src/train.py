@@ -37,15 +37,15 @@ def train_model(device: torch.device,
     # define optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
-    # define Cross Entropy loss
-    loss = torch.nn.CrossEntropyLoss()
+    # define Cross Entropy loss ignoring the pad token
+    loss = torch.nn.CrossEntropyLoss(ignore_index=word2_idx['<PAD>'])
 
     # define tensorboard writer
     writer = SummaryWriter()
 
     # train model showing progress
     for epoch in range(epochs):
-        train_step(model, train_loader, loss, optimizer, writer, epoch, device)
+        # train_step(model, train_loader, loss, optimizer, writer, epoch, device)
         val_step(model, val_loader, loss, writer, epoch, device, word2_idx, idx2_word)
 
     # save model

@@ -2,7 +2,6 @@
 import torch
 import numpy as np
 from torch.jit import RecursiveScriptModule
-
 # from tkinter import Image
 # from matplotlib import pyplot as plt
 
@@ -203,7 +202,7 @@ def load_data(
 
     # load and preprocess data
     download_and_prepare_flickr8k_dataset(path)
-    captions_path = path + "/flickr8k"
+    captions_path = path + '/flickr8k'
     captions_dict_train, captions_dict_val, captions_dict_test, word_list = (
         load_and_process_captions_flickr8k(captions_path)
     )
@@ -246,20 +245,19 @@ def load_data(
     # Show the first element of the dictionary
     for key in captions_dict_train:
         for caption in captions_dict_train[key]:
-            caption += [word_to_index["</s>"]] * (max_length_train - len(caption))
+            caption += [word_to_index["<PAD>"]] * (max_length_train - len(caption))
+
 
     for key in captions_dict_val:
         for caption in captions_dict_val[key]:
-            caption += [word_to_index["</s>"]] * (max_length_val - len(caption))
+            caption += [word_to_index["<PAD>"]] * (max_length_val - len(caption))
 
     for key in captions_dict_test:
         for caption in captions_dict_test[key]:
-            caption += [word_to_index["</s>"]] * (max_length_test - len(caption))
+            caption += [word_to_index["<PAD>"]] * (max_length_test - len(caption))
 
     # We only keep the first caption
-    captions_dict_train = {
-        key: captions_dict_train[key][0] for key in captions_dict_train
-    }
+    captions_dict_train = {key: captions_dict_train[key][0] for key in captions_dict_train}
     captions_dict_val = {key: captions_dict_val[key][0] for key in captions_dict_val}
     captions_dict_test = {key: captions_dict_test[key][0] for key in captions_dict_test}
 
@@ -406,9 +404,7 @@ def generate_caption(output: torch.Tensor, index_to_word: dict) -> str:
     indices = torch.argmax(output, dim=1)
 
     # Convert indices to words
-    caption = " ".join(
-        [index_to_word[i] for sublist in indices.tolist() for i in sublist]
-    )
+    caption = " ".join([index_to_word[index.item()] for index in indices])
 
     return caption
 
