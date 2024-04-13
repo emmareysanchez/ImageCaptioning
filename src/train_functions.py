@@ -8,7 +8,7 @@ import tqdm
 
 # # other libraries
 # from typing import Optional
-# from src.utils import generate_caption
+from src.utils import generate_caption
 
 
 @torch.enable_grad()
@@ -104,14 +104,17 @@ def val_step(
         targets = targets.long()
 
         # We generate the caption for the batch
-        captions = model.generate_batch_captions(inputs,word2_idx, idx2_word)
-        print(captions[0])
+        captions = model.generate_batch_captions(inputs, word2_idx, idx2_word)
+        print('Batch:', captions[0])
 
         # We compute the loss
         outputs = model(inputs, targets)
         outputs_reshaped = outputs.reshape(-1, outputs.shape[2])
         targets_reshaped = targets.reshape(-1)
         loss_value = loss(outputs_reshaped, targets_reshaped)
+
+        caption = generate_caption(outputs, idx2_word)
+        print(caption)
 
         writer.add_scalar("Loss/val", loss_value.item(), epoch)
 
