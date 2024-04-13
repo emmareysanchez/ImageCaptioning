@@ -78,7 +78,7 @@ class RNN(nn.Module):
         embed = self.dropout(self.embedding(captions))
         new_embed = torch.cat((features.unsqueeze(1), embed), dim=1)
 
-        lstm_out, _ = self.lstm(new_embed)
+        lstm_out, cn = self.lstm(new_embed)
         outputs = self.linear(lstm_out)
         
         return outputs[:, 1:, :]
