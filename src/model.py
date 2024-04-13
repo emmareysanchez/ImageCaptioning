@@ -13,6 +13,7 @@ class MyModel(nn.Module):
         encoder (ModifiedVGG19): The encoder model.
         decoder (RNN): The decoder model.
     """
+
     def __init__(self, encoder_params, decoder_params):
         """
         Initialize the model.
@@ -56,8 +57,8 @@ class MyModel(nn.Module):
         self.eval()
         with torch.no_grad():
             features = self.encoder(image).unsqueeze(0)
-            start_token = vocab('<s>')
-            end_token = vocab('</s>')
+            start_token = vocab("<s>")
+            end_token = vocab("</s>")
 
             caption = [start_token]
 
@@ -68,14 +69,15 @@ class MyModel(nn.Module):
                 predicted = outputs.argmax(2)[-1].item()
 
                 # Add the predicted word to the caption
-        
 
                 if predicted == end_token:
                     break
 
                 caption.append(predicted)
 
-    def generate_batch_captions(self, images: torch.Tensor, word2_idx, idx2_word, max_len: int = 50) -> list:
+    def generate_batch_captions(
+        self, images: torch.Tensor, word2_idx, idx2_word, max_len: int = 50
+    ) -> list:
         """
         Generate captions for a batch of images.
 
@@ -90,8 +92,8 @@ class MyModel(nn.Module):
         self.eval()
         with torch.no_grad():
             features = self.encoder(images)
-            start_token = word2_idx['<s>']
-            end_token = word2_idx['</s>']
+            start_token = word2_idx["<s>"]
+            end_token = word2_idx["</s>"]
 
             captions = [[start_token] for _ in range(images.shape[0])]
 
@@ -110,7 +112,19 @@ class MyModel(nn.Module):
             captions = [caption[1:] for caption in captions]
 
             # If the word is not in the dictionary we don't add it
-            captions = [' '.join([idx2_word[token] for token in caption]) for caption in captions]
+            captions = [
+                " ".join([idx2_word[token] for token in caption])
+                for caption in captions
+            ]
 
         return captions
-        
+
+    def load_model(self, name: str) -> None:
+        """
+        Load the model from a file.
+
+        Args:
+            path (str): The path to the file.
+        """
+        model = torch.jit.load(f"models/{name}.pt")
+        self.load_state_dict(model.state_dict())
