@@ -46,9 +46,13 @@ def train_step(
         inputs = inputs.float()
         targets = targets.long()
 
+        # We want them to be (max_len, batch_size)
+        targets = targets.permute(1, 0)
+        print(targets.shape)
+
         optimizer.zero_grad()
 
-        outputs = model(inputs, targets[:,:-1])
+        outputs = model(inputs, targets[:-1])
 
         # print(outputs.shape)
         # print(targets.shape)

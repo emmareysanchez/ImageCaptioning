@@ -88,7 +88,7 @@ class DecoderRNN(nn.Module):
     def __init__(self, vocab_size, embedding_dim, hidden_dim, num_layers, start_token_index, end_token_index, dropout=0.5):
         super(DecoderRNN, self).__init__()
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
-        self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers, batch_first=True)
+        self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers)
         self.linear = nn.Linear(hidden_dim, vocab_size)
         self.dropout = nn.Dropout(dropout)
         self.vocab_size = vocab_size
@@ -97,7 +97,7 @@ class DecoderRNN(nn.Module):
 
     def forward(self, features, captions):
         embed = self.dropout(self.embedding(captions))
-        new_embed = torch.cat((features.unsqueeze(1), embed), dim=1)
+        new_embed = torch.cat((features.unsqueeze(0), embed), dim=0)
         lstm_out, _ = self.lstm(new_embed)
         outputs = self.linear(lstm_out)
         return outputs
