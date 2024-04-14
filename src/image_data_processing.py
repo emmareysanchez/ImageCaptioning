@@ -42,7 +42,17 @@ def download_and_prepare_flickr8k_dataset(path: str) -> None:
             os.makedirs(f"{dataset_path}/test")
 
         # Define resize transformation
-        transform = transforms.Resize((224, 224))
+        # transform = transforms.Resize((224, 224))
+
+        # For inception dataset
+        transform = transforms.Compose(
+        [
+            transforms.Resize((299, 299)),
+            # transforms.RandomCrop((299, 299)),
+            # transforms.ToTensor(),
+            # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+        ]
+        )
 
         images_list = os.listdir(f"{dataset_path}/Images")
         # Split into train and validation

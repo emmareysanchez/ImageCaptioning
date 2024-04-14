@@ -46,9 +46,14 @@ def train_step(
         inputs = inputs.float()
         targets = targets.long()
 
-        optimizer.zero_grad()
+        # We want them to be (max_len, batch_size)
+        targets = targets.permute(1, 0)
 
-        outputs = model(inputs, targets)
+        optimizer.zero_grad()
+        print(targets.shape)
+        print(targets[:-1].shape)
+
+        outputs = model(inputs, targets[:-1])
 
         # print(outputs.shape)
         # print(targets.shape)
@@ -108,15 +113,19 @@ def val_step(
         # print('Batch:', captions[0])
 
         # We compute the loss
-        outputs = model(inputs, targets)
-        outputs_reshaped = outputs.reshape(-1, outputs.shape[2])
-        targets_reshaped = targets.reshape(-1)
-        loss_value = loss(outputs_reshaped, targets_reshaped)
+        # outputs = model(inputs, targets)
+        # outputs_reshaped = outputs.reshape(-1, outputs.shape[2])
+        # targets_reshaped = targets.reshape(-1)
+        # loss_value = loss(outputs_reshaped, targets_reshaped)
 
         # caption = generate_caption(outputs, idx2_word)
         # print(caption)
 
-        writer.add_scalar("Loss/val", loss_value.item(), epoch)
+        # generate caption for each target and image
+        caption = model.generate_caption(inputs[0].unsqueeze(0), idx2_word)
+        print('Caption:', caption)
+        break
+        # writer.add_scalar("Loss/val", loss_value.item(), epoch)
 
 
 @torch.no_grad()

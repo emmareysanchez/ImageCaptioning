@@ -1,6 +1,6 @@
 import torch
 
-from src.model import MyModel
+from src.model import MyModel, ImageCaptioningModel
 from src.train import train_model
 from src.utils import load_data
 
@@ -47,7 +47,9 @@ def main():
                           'start_token_index': word_to_index['<s>'],
                           'end_token_index': word_to_index['</s>'],
                           'dropout': drop_prob}
-        model = MyModel(encoder_params, decoder_params)
+        # model = MyModel(encoder_params, decoder_params)
+        model = ImageCaptioningModel(embedding_size, hidden_size, len(word_to_index), num_layers,
+                                     word_to_index['<s>'], word_to_index['</s>'])
         model.to(device)
 
         # train model
