@@ -50,6 +50,8 @@ def train_step(
         targets = targets.permute(1, 0)
 
         optimizer.zero_grad()
+        print(targets.shape)
+        print(targets[:-1].shape)
 
         outputs = model(inputs, targets[:-1])
 

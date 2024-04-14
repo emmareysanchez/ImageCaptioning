@@ -54,7 +54,7 @@ def train_model(device: torch.device,
     # train model showing progress
     for epoch in range(start_epoch, epochs):
         print(f"Epoch {epoch + 1}/{epochs}")
-        # train_step(model, train_loader, loss, optimizer, writer, epoch, device)
+        train_step(model, train_loader, loss, optimizer, writer, epoch, device)
         val_step(model, val_loader, loss, writer, epoch, device, word2_idx, idx2_word)
 
         # Save a checkpoint
