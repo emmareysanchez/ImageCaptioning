@@ -64,3 +64,44 @@ class ModifiedVGG19(nn.Module):
         # Apply the modified classifier layer
         x = self.classifier(x)
         return x
+
+
+class ModifiedInception(nn.Module):
+    def __init__(self, embedding_dim: int):
+        """
+        Initialize the modified Inception model.
+
+        Args:
+            embedding_dim (int): The size of the embedding.
+
+        """
+        super(ModifiedInception, self).__init__()
+        # Load the pretrained Inception model
+        self.inception = models.inception_v3(pretrained=True, aux_logits=True)
+        self.inception.fc = nn.Linear(self.inception.fc.in_features, embedding_dim)
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(0.5)
+
+        # Freeze the parameters of the features for finetuning
+        for name, param in self.inception.named_parameters():
+            if "fc.weight" in name or "fc.bias" in name:
+                param.requires_grad = True
+            else:
+                param.requires_grad = False
+        
+    def forward(self, images: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass of the model.
+
+        Args:
+            images (torch.Tensor): The input images.
+
+        Returns:
+            torch.Tensor: The extracted features.
+        """
+        features = self.inception(images)
+        if self.training and self.inception.aux_logits:
+            features = features.logits  # Solo si aux_logits está habilitado y es relevante para tu uso.
+        else:
+            features = features  # O maneja adecuadamente según tu caso de uso.
+        return self.dropout(self.relu(features))

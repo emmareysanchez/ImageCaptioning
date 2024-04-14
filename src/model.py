@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 
-from src.encoder import ModifiedVGG19
-from src.decoder import RNN
+from src.encoder import ModifiedVGG19, ModifiedInception
+from src.decoder import RNN, DecoderRNN
 
 
 class MyModel(nn.Module):
@@ -130,3 +130,32 @@ class MyModel(nn.Module):
         """
         model = torch.jit.load(f"models/{name}.pt")
         self.load_state_dict(model.state_dict())
+
+
+
+class ImageCaptioningModel(nn.Module):
+    def __init__(self, embedding_dim, hidden_dim, vocab_size, num_layers, start_token_index, end_token_index):
+        super(ImageCaptioningModel, self).__init__()
+        self.encoder = ModifiedInception(embedding_dim)
+        self.decoder = DecoderRNN(vocab_size, embedding_dim, hidden_dim, num_layers, start_token_index, end_token_index)
+    
+    def forward(self, images, captions):
+        features = self.encoder(images)
+        outputs = self.decoder(features, captions)
+        return outputs
+    
+    def generate_caption(self, image, idx2word, max_len=50):
+        self.eval()
+        caption = []
+        with torch.no_grad():
+            features = self.encoder(image).unsqueeze(0)
+            states = None
+
+            for _ in range(max_len):
+                hidden, states = self.decoder.lstm(features, states)
+                output = self.decoder.linear(hidden)
+                predicted = output.argmax(2)[-1].item()
+                caption.append(predicted)
+                if predicted == self.decoder.end_token_index:
+                    break
+        return " ".join([idx2word[token] for token in caption])
