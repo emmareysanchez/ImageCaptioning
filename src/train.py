@@ -23,7 +23,7 @@ DATA_PATH: str = "data"
 CHECKPOINT_PATH: str = "checkpoint"
 
 need_to_train = True
-need_to_load = False
+need_to_load = True
 
 
 def main():
@@ -33,8 +33,8 @@ def main():
     """
     # Define hyperparameters
     batch_size = 32
-    epochs = 10
-    learning_rate = 0.001
+    epochs = 110
+    learning_rate = 3e-4
     embedding_size = 256
     hidden_size = 256
     num_layers = 1

@@ -84,6 +84,15 @@ def main() -> None:
                 caption = model.generate_caption(inputs[i].unsqueeze(0), index_to_word)
                 real_caption = target_caption(targets[i], index_to_word)
 
+                words = caption.split()
+                
+                # Add \n every 10 words
+                caption = ""
+                for j, word in enumerate(words):
+                    caption += word + " "
+                    if j % 10 == 0 and j != 0:
+                        caption += "\n"
+
                 # Save image and caption in "solution" folder
                 # Will have to create it if necessary
                 image = inputs[i].cpu().numpy().transpose((1, 2, 0))
@@ -93,9 +102,10 @@ def main() -> None:
 
                 plt.figure()
                 plt.imshow(image)
-                plt.title(f"Predicted: {caption}\nReal: {real_caption}")
-                plt.axis("off")
-                plt.savefig(f"{solution_dir}/image_{batch_idx}_{i}.png")
+                plt.title(f"Predicted: {caption}\nReal: {real_caption}", fontsize=8)
+                plt.axis('off')
+                plt.tight_layout(pad=3.0)
+                plt.savefig(f"{solution_dir}/image_{batch_idx}_{i}.png", dpi=300)
                 plt.close()
 
 
