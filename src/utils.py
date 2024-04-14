@@ -448,3 +448,72 @@ def generate_caption2(self, outputs: torch.Tensor) -> List[str]:
         captions.append(" ".join(caption))
 
     return captions
+
+def generate_caption3(model, images, idx2word, word2idx, max_len=50):
+    """
+    Generate a caption for each image in the input.
+
+    Args:
+        model (torch.nn.Module): Model used to generate the captions.
+        images (torch.Tensor): Tensor with the images to generate captions for.
+        idx2word (dict): Dictionary to convert indices to words.
+
+    Returns:
+        List[str]: List of captions generated for each image.
+    """
+    # Set the model to evaluation mode
+    model.eval()
+
+    with torch.no_grad():
+        features = model.encoder(images.unsqueeze(0))
+        states = None
+
+        caption = torch.tensor([word2idx["<s>"]]).unsqueeze(0)
+
+        for _ in range(max_len):
+            hiddens = model.decoder(features, caption)
+            predicted = hiddens.argmax(2).squeeze(0)
+            predicted = predicted[-1].item()
+            caption = torch.cat((caption, torch.tensor([[predicted]])), 1)
+            if predicted == word2idx["</s>"]:
+                break
+
+        caption_words = [idx2word[idx] for idx in caption.squeeze(0).tolist()]
+        caption_words = caption_words[1:-1]
+        caption = " ".join(caption_words)
+        return caption
+    
+def generate_caption3(model, image, idx2word, word2idx, max_len=50):
+    """
+    Generate a caption for a single image.
+
+    Args:
+        model (torch.nn.Module): Model used to generate the captions.
+        image (torch.Tensor): Tensor with the image to generate captions for.
+        idx2word (dict): Dictionary to convert indices to words.
+        word2idx (dict): Dictionary to convert words to indices.
+        max_len (int): Maximum length for the generated caption.
+
+    Returns:
+        str: Caption generated for the image.
+    """
+    model.eval()
+    with torch.no_grad():
+        features = model.encoder(image.unsqueeze(0))
+        inputs = features
+        states = None
+
+        sampled_ids = []
+
+        for _ in range(max_len):
+            hidden, states = model.decoder.lstm(inputs, states)
+            outputs = model.decoder.linear(hidden.squeeze(1))
+            _, predicted = outputs.max(1)
+            inputs = model.decoder.embedding(predicted)
+            sampled_ids.append(predicted.item())
+            if predicted.item() == word2idx["</s>"]:
+                break
+            print(sampled_ids)
+
+        sampled_caption = [idx2word[idx] for idx in sampled_ids]
+        return " ".join(sampled_caption)

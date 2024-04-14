@@ -8,7 +8,7 @@ from torch.jit import RecursiveScriptModule
 from typing import Final
 
 # own modules
-from src.utils import set_seed, load_model, generate_caption, load_data
+from src.utils import set_seed, load_model, generate_caption, load_data, generate_caption3
 from src.model import MyModel
 
 # TODO: Import necessary libraries
@@ -81,11 +81,14 @@ def main() -> None:
 
             # generate_caption
             # caption = model.generate_batch_captions(inputs, word_to_index, index_to_word)
+            # caption = generate_caption3(model, inputs, index_to_word, word_to_index)
 
             # Foreach output
             for i in range(len(outputs)):
                 caption = generate_caption(outputs[i], index_to_word)
+                # caption = generate_caption3(model, inputs[i], index_to_word, word_to_index)
                 real_caption = target_caption(targets[i], index_to_word)
+
 
                 # Save image and caption in "solution" folder
                 # Will have to create it if necessary
