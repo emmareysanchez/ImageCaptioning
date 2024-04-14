@@ -46,7 +46,7 @@ class RNN(nn.Module):
         self.lstm = nn.LSTM(embedding_dim,
                             hidden_dim,
                             num_layers,
-                            dropout=dropout,
+                            # dropout=dropout,
                             batch_first=True)
 
         # Fully connected layer to predict each word in the vocabulary
@@ -62,7 +62,7 @@ class RNN(nn.Module):
         self.start_token_index = start_token_index
         self.end_token_index = end_token_index
 
-    def forward(self, features: torch.Tensor) -> torch.Tensor:
+    def forward(self, features: torch.Tensor, captions) -> torch.Tensor:
         """
         Args:
             features (torch.Tensor): Tensor of image features with shape
@@ -75,68 +75,29 @@ class RNN(nn.Module):
             torch.Tensor: Tensor with the log-probabilities of the predicted
             words for each position in the sequence.
         """
-        batch_size = features.size(0)
-        max_seq_length = 50  # FIXME: Verify the maximum sequence length
+        embed = self.dropout(self.embedding(captions))
+        new_embed = torch.cat((features.unsqueeze(1), embed), dim=1)
 
-        # Initialize the tensor to store the log-probabilities of the predicted words
-        outputs = torch.zeros(batch_size,
-                              max_seq_length,
-                              self.vocab_size).to(features.device)
+        lstm_out, cn = self.lstm(new_embed)
+        outputs = self.linear(lstm_out)
+        
+        return outputs[:, 1:, :]
 
-        # Initialize the hidden state and cell state of the LSTM with the image features
-        h, c = self.init_hidden(features)
 
-        # Prepare the first input for the LSTM, which will be the start token
-        input_word = torch.full((batch_size,),
-                                self.start_token_index,
-                                dtype=torch.long).to(features.device)
-        end_tokens = torch.full((batch_size,),
-                                self.end_token_index,
-                                dtype=torch.long).to(features.device)
+class DecoderRNN(nn.Module):
+    def __init__(self, vocab_size, embedding_dim, hidden_dim, num_layers, start_token_index, end_token_index, dropout=0.5):
+        super(DecoderRNN, self).__init__()
+        self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers)
+        self.linear = nn.Linear(hidden_dim, vocab_size)
+        self.dropout = nn.Dropout(dropout)
+        self.vocab_size = vocab_size
+        self.start_token_index = start_token_index
+        self.end_token_index = end_token_index
 
-        # Initialize a mask to keep track of which sequences have generated the end token
-        end_token_mask = torch.zeros(batch_size, dtype=torch.bool).to(features.device)
-
-        for t in range(max_seq_length):
-            # Embed the input word
-            input_embedding = self.embedding(input_word).unsqueeze(1)
-
-            # Apply the LSTM layer
-            lstm_out, (h, c) = self.lstm(input_embedding, (h, c))
-
-            # Apply the linear layer to get the log-probabilities of the predicted words
-            output = self.linear(lstm_out.squeeze(1))
-            outputs[:, t, :] = output
-
-            # Apply dropout and select the word with the highest log-probability
-            input_word = output.argmax(1)
-
-            # Update the end token mask
-            end_token_mask |= input_word == end_tokens
-
-            # If all sequences have generated the end token, stop the loop
-            if end_token_mask.all():
-                break
-
+    def forward(self, features, captions):
+        embed = self.dropout(self.embedding(captions))
+        new_embed = torch.cat((features.unsqueeze(0), embed), dim=0)
+        lstm_out, _ = self.lstm(new_embed)
+        outputs = self.linear(lstm_out)
         return outputs
-
-    def init_hidden(self, features):
-        """
-        Assuming features is the output of the CNN and has shape
-        (batch_size, cnn_output_size), process it to be the initial
-        hidden state of the LSTM (and cell state).
-
-        Args:
-            features (torch.Tensor): Output of the CNN with shape (batch_size,
-            cnn_output_size).
-
-        Returns:
-            Tuple[torch.Tensor, torch.Tensor]: Tuple containing the initial
-            hidden state and cell state.
-        """
-        # Transform features to be the initial hidden state
-        # Note: This might involve linear layers or other transformations,
-        # depending on the dimensions needed.
-        h0 = features.unsqueeze(0)  # Add a dimension for the sequence length
-        c0 = torch.zeros_like(h0)  # Initial cell state is often just zeros
-        return h0, c0

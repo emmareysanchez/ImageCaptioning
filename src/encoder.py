@@ -3,6 +3,7 @@ from torch import nn
 from torchvision import models
 
 
+
 class ModifiedVGG19(nn.Module):
     """
     A modified VGG19 model implemented using PyTorch for extracting image features.
@@ -21,7 +22,7 @@ class ModifiedVGG19(nn.Module):
         """
         super(ModifiedVGG19, self).__init__()
         # Load the pretrained VGG19 model
-        vgg19 = models.vgg19(pretrained=True).features
+        vgg19 = models.vgg19(weights='DEFAULT').features
 
         # Here we keep the convolutional layers of VGG19 unchanged
         self.features = vgg19
@@ -34,7 +35,8 @@ class ModifiedVGG19(nn.Module):
         # Replace the last FC layer to match the size of the embedding
         self.classifier = nn.Sequential(
             nn.Linear(num_features, embedding_dim),
-            # You can add more layers here if necessary
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.5)
         )
 
         # Freeze the parameters of the features for finetuning
@@ -62,3 +64,48 @@ class ModifiedVGG19(nn.Module):
         # Apply the modified classifier layer
         x = self.classifier(x)
         return x
+
+
+class ModifiedInception(nn.Module):
+    def __init__(self, embedding_dim: int, aux_logits: bool = True):
+        """
+        Initialize the modified Inception model.
+
+        Args:
+            embedding_dim (int): The size of the embedding.
+
+        """
+        super(ModifiedInception, self).__init__()
+        # Load the pretrained Inception model
+        self.inception = models.inception_v3(pretrained=True, aux_logits=aux_logits)
+        self.inception.fc = nn.Linear(self.inception.fc.in_features, embedding_dim)
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(0.5)
+        self.aux_logits = aux_logits
+
+        # Freeze the parameters of the features for finetuning
+        for name, param in self.inception.named_parameters():
+            if "fc.weight" in name or "fc.bias" in name:
+                param.requires_grad = True
+            else:
+                param.requires_grad = False
+        
+    def forward(self, images: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass of the model.
+
+        Args:
+            images (torch.Tensor): The input images.
+
+        Returns:
+            torch.Tensor: The extracted features.
+        """
+        # Directly handle whether to use logits or full outputs
+        outputs = self.inception(images)
+        if self.aux_logits and self.training:
+            features = outputs.logits
+        else:
+            features = outputs  # This assumes the default is just the logits or a tensor
+
+        # Apply dropout and ReLU to the processed features
+        return self.dropout(self.relu(features))

@@ -18,3 +18,11 @@ data/
 
 # Ignore json
 *.json
+
+# Ignore runs folder
+runs/
+
+# Ignore model files
+*.pth
+*.pt
+models/

@@ -225,18 +225,41 @@ def load_data(
         ]
     )
 
+    max_length_test = max(
+        [
+            len(caption)
+            for captions in captions_dict_test.values()
+            for caption in captions
+        ]
+    )
+
+    max_length_val = max(
+        [
+            len(caption)
+            for captions in captions_dict_val.values()
+            for caption in captions
+        ]
+    )
+
     # Update the lenght of the captions
+    # Show the first element of the dictionary
     for key in captions_dict_train:
         for caption in captions_dict_train[key]:
-            caption += [word_to_index["</s>"]] * (max_length_train - len(caption))
+            caption += [word_to_index["<PAD>"]] * (max_length_train - len(caption))
+
+
+    for key in captions_dict_val:
+        for caption in captions_dict_val[key]:
+            caption += [word_to_index["<PAD>"]] * (max_length_val - len(caption))
+
+    for key in captions_dict_test:
+        for caption in captions_dict_test[key]:
+            caption += [word_to_index["<PAD>"]] * (max_length_test - len(caption))
 
     # We only keep the first caption
-    captions_dict_train = {
-        key: captions[0] for captions in captions_dict_train[key]
-        for key in captions_dict_train
-    }
-
-    # TODO: hacerlo en val y test
+    captions_dict_train = {key: captions_dict_train[key][0] for key in captions_dict_train}
+    captions_dict_val = {key: captions_dict_val[key][0] for key in captions_dict_val}
+    captions_dict_test = {key: captions_dict_test[key][0] for key in captions_dict_test}
 
     train_path = f"{path}/flickr8k/train"
     val_path = f"{path}/flickr8k/val"
@@ -380,8 +403,14 @@ def generate_caption(output: torch.Tensor, index_to_word: dict) -> str:
     # Get the indices of the words
     indices = torch.argmax(output, dim=1)
 
-    # Convert indices to words
-    caption = " ".join([index_to_word[index.item()] for index in indices])
+    # Convert indices to words until end of sentence
+    caption = " "
+    for index in indices[1:]:
+        word = index_to_word[index.item()]
+        if word == "</s>":
+            break
+        caption += word + " "
+
 
     return caption
 
@@ -419,3 +448,130 @@ def generate_caption2(self, outputs: torch.Tensor) -> List[str]:
         captions.append(" ".join(caption))
 
     return captions
+
+def generate_caption3(model, images, idx2word, word2idx, max_len=50):
+    """
+    Generate a caption for each image in the input.
+
+    Args:
+        model (torch.nn.Module): Model used to generate the captions.
+        images (torch.Tensor): Tensor with the images to generate captions for.
+        idx2word (dict): Dictionary to convert indices to words.
+
+    Returns:
+        List[str]: List of captions generated for each image.
+    """
+    # Set the model to evaluation mode
+    model.eval()
+
+    with torch.no_grad():
+        features = model.encoder(images.unsqueeze(0))
+        states = None
+
+        caption = torch.tensor([word2idx["<s>"]]).unsqueeze(0)
+
+        for _ in range(max_len):
+            hiddens = model.decoder(features, caption)
+            predicted = hiddens.argmax(2).squeeze(0)
+            predicted = predicted[-1].item()
+            caption = torch.cat((caption, torch.tensor([[predicted]])), 1)
+            if predicted == word2idx["</s>"]:
+                break
+
+        caption_words = [idx2word[idx] for idx in caption.squeeze(0).tolist()]
+        caption_words = caption_words[1:-1]
+        caption = " ".join(caption_words)
+        return caption
+    
+def generate_caption3(model, image, idx2word, word2idx, max_len=50):
+    """
+    Generate a caption for a single image.
+
+    Args:
+        model (torch.nn.Module): Model used to generate the captions.
+        image (torch.Tensor): Tensor with the image to generate captions for.
+        idx2word (dict): Dictionary to convert indices to words.
+        word2idx (dict): Dictionary to convert words to indices.
+        max_len (int): Maximum length for the generated caption.
+
+    Returns:
+        str: Caption generated for the image.
+    """
+    model.eval()
+    with torch.no_grad():
+        features = model.encoder(image.unsqueeze(0))
+        inputs = features
+        states = None
+
+        sampled_ids = []
+
+        for _ in range(max_len):
+            hidden, states = model.decoder.lstm(inputs, states)
+            outputs = model.decoder.linear(hidden.squeeze(1))
+            _, predicted = outputs.max(1)
+            inputs = model.decoder.embedding(predicted)
+            sampled_ids.append(predicted.item())
+            if predicted.item() == word2idx["</s>"]:
+                break
+            print(sampled_ids)
+
+        sampled_caption = [idx2word[idx] for idx in sampled_ids]
+        return " ".join(sampled_caption)
+
+
+def save_checkpoint(
+    model: torch.nn.Module,
+    optimizer: torch.optim.Optimizer,
+    epoch: int,
+    path: str,
+) -> None:
+    """
+    This function saves a checkpoint of the model and optimizer.
+
+    Args:
+        model (torch.nn.Module): model to save.
+        optimizer (torch.optim.Optimizer): optimizer to save.
+        epoch (int): epoch number.
+        path (str): path to save the checkpoint.
+    """
+    # Create folder if it does not exist
+    if not os.path.isdir(path):
+        os.makedirs(path)
+
+    # Save the checkpoint
+    torch.save(
+        {
+            "epoch": epoch,
+            "model_state_dict": model.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+        },
+        f"{path}/checkpoint.pth",
+    )
+    print("Checkpoint saved at 'checkpoint.pth'")
+    return None
+
+def load_checkpoint(
+    model: torch.nn.Module,
+    optimizer: torch.optim.Optimizer,
+    path: str,
+) -> tuple[int, torch.nn.Module, torch.optim.Optimizer]:
+    """
+    This function loads a checkpoint of the model and optimizer.
+
+    Args:
+        model (torch.nn.Module): model to load.
+        optimizer (torch.optim.Optimizer): optimizer to load.
+        path (str): path to load the checkpoint.
+
+    Returns:
+        tuple[int, torch.nn.Module, torch.optim.Optimizer]: epoch number, model and optimizer.
+    """
+    # Load the checkpoint
+    checkpoint = torch.load(f"{path}/checkpoint.pth")
+
+    # Load the model and optimizer
+    model.load_state_dict(checkpoint["model_state_dict"])
+    if optimizer:
+        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+
+    return checkpoint["epoch"], model, optimizer

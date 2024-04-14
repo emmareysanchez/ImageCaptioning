@@ -4,9 +4,11 @@ import numpy as np
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
+import tqdm
+
 # # other libraries
 # from typing import Optional
-# from src.utils import generate_caption
+from src.utils import generate_caption
 
 
 @torch.enable_grad()
@@ -35,28 +37,40 @@ def train_step(
     # Model in training mode
     model.train()
 
-    for inputs, targets in train_data:
+    for inputs, targets in tqdm.tqdm(train_data):
 
         inputs = inputs.to(device)
         targets = targets.to(device)
 
         # Inputs must be float
         inputs = inputs.float()
-        targets = targets.float()
+        targets = targets.long()
+
+        # We want them to be (max_len, batch_size)
+        targets = targets.permute(1, 0)
 
         optimizer.zero_grad()
+        print(targets.shape)
+        print(targets[:-1].shape)
 
-        outputs = model(inputs)
+        outputs = model(inputs, targets[:-1])
 
-        print('Output', outputs.shape)
-        print('Targets:', targets.shape)
+        # print(outputs.shape)
+        # print(targets.shape)
 
-        loss_value = loss(outputs.view(-1, outputs.size(2)), targets.view(-1))
+        outputs_reshaped = outputs.reshape(-1, outputs.shape[2])
+        targets_reshaped = targets.reshape(-1)
+
+        # print(outputs_reshaped.shape)
+        # print(targets_reshaped.shape)
+
+        loss_value = loss(outputs_reshaped, targets_reshaped)
 
         loss_value.backward()
         optimizer.step()
 
         writer.add_scalar("Loss/train", loss_value.item(), epoch)
+        
 
 
 @torch.no_grad()
@@ -67,6 +81,8 @@ def val_step(
     writer: SummaryWriter,
     epoch: int,
     device: torch.device,
+    word2_idx: dict,
+    idx2_word: dict
 ) -> None:
     """
     This function validate the model.
@@ -90,13 +106,26 @@ def val_step(
 
         # Inputs must be float
         inputs = inputs.float()
-        targets = targets.float()
+        targets = targets.long()
 
-        outputs = model(inputs)
+        # We generate the caption for the batch
+        # captions = model.generate_batch_captions(inputs, word2_idx, idx2_word)
+        # print('Batch:', captions[0])
 
-        loss_value = loss(outputs, targets)
+        # We compute the loss
+        # outputs = model(inputs, targets)
+        # outputs_reshaped = outputs.reshape(-1, outputs.shape[2])
+        # targets_reshaped = targets.reshape(-1)
+        # loss_value = loss(outputs_reshaped, targets_reshaped)
 
-        writer.add_scalar("Loss/val", loss_value.item(), epoch)
+        # caption = generate_caption(outputs, idx2_word)
+        # print(caption)
+
+        # generate caption for each target and image
+        caption = model.generate_caption(inputs[0].unsqueeze(0), idx2_word)
+        print('Caption:', caption)
+        break
+        # writer.add_scalar("Loss/val", loss_value.item(), epoch)
 
 
 @torch.no_grad()
@@ -104,6 +133,8 @@ def t_step(
     model: torch.nn.Module,
     data: DataLoader,
     device: torch.device,
+    word2_idx: dict,
+    idx2_word: dict
 ) -> np.ndarray:
     """
     This function predict the model.
@@ -122,15 +153,17 @@ def t_step(
 
     predictions = []
 
-    for inputs, _ in data:
+    for inputs, targets in data:
 
         inputs = inputs.to(device)
 
         # Inputs must be float
         inputs = inputs.float()
 
-        outputs = model(inputs)
+        # get the captions of the images of the batch
+        captions = model.generate_batch_captions(inputs, word2_idx, idx2_word)
 
-        predictions.append(outputs.cpu().numpy())
+        # Add the captions to the list of predictions
+        predictions.extend(captions)
 
     # TODO: use and implement evaluation metrics to asses the predictions

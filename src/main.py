@@ -1,12 +1,10 @@
 import torch
 
-from src.model import MyModel
+from src.model import MyModel, ImageCaptioningModel
 from src.train import train_model
 from src.utils import load_data
 
 # # Libraries to show the image and add the caption
-# from PIL import Image
-# import matplotlib.pyplot as plt
 
 from src.utils import set_seed
 
@@ -49,13 +47,15 @@ def main():
                           'start_token_index': word_to_index['<s>'],
                           'end_token_index': word_to_index['</s>'],
                           'dropout': drop_prob}
-        model = MyModel(encoder_params, decoder_params)
+        # model = MyModel(encoder_params, decoder_params)
+        model = ImageCaptioningModel(embedding_size, hidden_size, len(word_to_index), num_layers,
+                                     word_to_index['<s>'], word_to_index['</s>'])
         model.to(device)
 
         # train model
-        train_model(device, num_epochs, learning_rate, model, train_loader, val_loader)
+        train_model(device, num_epochs, learning_rate, model, train_loader, val_loader, word_to_index, index_to_word)
 
-        # TODO: Implement the evaluation of the model
+        # TODO: Implement the test of the model
 
     else:
         # We load the model from the models folder
