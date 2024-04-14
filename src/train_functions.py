@@ -122,8 +122,7 @@ def val_step(
         # generate caption for each target and image
         caption = model.generate_caption(inputs[0].unsqueeze(0), idx2_word)
         print('Caption:', caption)
-
-
+        break
         # writer.add_scalar("Loss/val", loss_value.item(), epoch)
 
 

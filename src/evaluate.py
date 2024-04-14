@@ -8,7 +8,7 @@ from torch.jit import RecursiveScriptModule
 from typing import Final
 
 # own modules
-from src.utils import set_seed, load_model, generate_caption, load_data, generate_caption3
+from src.utils import set_seed, load_model, generate_caption, load_data, generate_caption3, load_checkpoint
 from src.model import MyModel, ImageCaptioningModel
 
 # TODO: Import necessary libraries
@@ -64,8 +64,9 @@ def main() -> None:
         word_to_index["</s>"],
     )
 
-    model.load_model("model")
+    # model.load_model("model")
     # model = load_model("model")
+    _, model, _ = load_checkpoint(model, None, "checkpoint")
 
     solution_dir = "solution"
     if not os.path.exists(solution_dir):

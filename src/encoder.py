@@ -67,7 +67,7 @@ class ModifiedVGG19(nn.Module):
 
 
 class ModifiedInception(nn.Module):
-    def __init__(self, embedding_dim: int):
+    def __init__(self, embedding_dim: int, aux_logits: bool = True):
         """
         Initialize the modified Inception model.
 
@@ -77,10 +77,11 @@ class ModifiedInception(nn.Module):
         """
         super(ModifiedInception, self).__init__()
         # Load the pretrained Inception model
-        self.inception = models.inception_v3(pretrained=True, aux_logits=True)
+        self.inception = models.inception_v3(pretrained=True, aux_logits=aux_logits)
         self.inception.fc = nn.Linear(self.inception.fc.in_features, embedding_dim)
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(0.5)
+        self.aux_logits = aux_logits
 
         # Freeze the parameters of the features for finetuning
         for name, param in self.inception.named_parameters():
@@ -99,9 +100,12 @@ class ModifiedInception(nn.Module):
         Returns:
             torch.Tensor: The extracted features.
         """
-        features = self.inception(images)
-        if self.training and self.inception.aux_logits:
-            features = features.logits  # Solo si aux_logits está habilitado y es relevante para tu uso.
+        # Directly handle whether to use logits or full outputs
+        outputs = self.inception(images)
+        if self.aux_logits and self.training:
+            features = outputs.logits
         else:
-            features = features  # O maneja adecuadamente según tu caso de uso.
+            features = outputs  # This assumes the default is just the logits or a tensor
+
+        # Apply dropout and ReLU to the processed features
         return self.dropout(self.relu(features))

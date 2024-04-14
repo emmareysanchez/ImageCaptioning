@@ -517,3 +517,61 @@ def generate_caption3(model, image, idx2word, word2idx, max_len=50):
 
         sampled_caption = [idx2word[idx] for idx in sampled_ids]
         return " ".join(sampled_caption)
+
+
+def save_checkpoint(
+    model: torch.nn.Module,
+    optimizer: torch.optim.Optimizer,
+    epoch: int,
+    path: str,
+) -> None:
+    """
+    This function saves a checkpoint of the model and optimizer.
+
+    Args:
+        model (torch.nn.Module): model to save.
+        optimizer (torch.optim.Optimizer): optimizer to save.
+        epoch (int): epoch number.
+        path (str): path to save the checkpoint.
+    """
+    # Create folder if it does not exist
+    if not os.path.isdir(path):
+        os.makedirs(path)
+
+    # Save the checkpoint
+    torch.save(
+        {
+            "epoch": epoch,
+            "model_state_dict": model.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+        },
+        f"{path}/checkpoint.pth",
+    )
+    print("Checkpoint saved at 'checkpoint.pth'")
+    return None
+
+def load_checkpoint(
+    model: torch.nn.Module,
+    optimizer: torch.optim.Optimizer,
+    path: str,
+) -> tuple[int, torch.nn.Module, torch.optim.Optimizer]:
+    """
+    This function loads a checkpoint of the model and optimizer.
+
+    Args:
+        model (torch.nn.Module): model to load.
+        optimizer (torch.optim.Optimizer): optimizer to load.
+        path (str): path to load the checkpoint.
+
+    Returns:
+        tuple[int, torch.nn.Module, torch.optim.Optimizer]: epoch number, model and optimizer.
+    """
+    # Load the checkpoint
+    checkpoint = torch.load(f"{path}/checkpoint.pth")
+
+    # Load the model and optimizer
+    model.load_state_dict(checkpoint["model_state_dict"])
+    if optimizer:
+        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+
+    return checkpoint["epoch"], model, optimizer

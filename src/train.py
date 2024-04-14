@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
 # own modules
-from src.utils import set_seed, save_model
+from src.utils import set_seed, save_model, save_checkpoint, load_checkpoint
 from src.train_functions import train_step, val_step
 
 
@@ -12,6 +12,8 @@ from src.train_functions import train_step, val_step
 # set device and seed
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 set_seed(42)
+
+need_to_load = False
 
 
 def train_model(device: torch.device,
@@ -43,11 +45,23 @@ def train_model(device: torch.device,
     # define tensorboard writer
     writer = SummaryWriter()
 
+    start_epoch = 0
+
+    if need_to_load:
+        start_epoch, model, optimizer = load_checkpoint(model, optimizer, "checkpoint")
+        model.to(device)
+
     # train model showing progress
-    for epoch in range(epochs):
+    for epoch in range(start_epoch, epochs):
         print(f"Epoch {epoch + 1}/{epochs}")
-        train_step(model, train_loader, loss, optimizer, writer, epoch, device)
+        # train_step(model, train_loader, loss, optimizer, writer, epoch, device)
         val_step(model, val_loader, loss, writer, epoch, device, word2_idx, idx2_word)
 
+        # Save a checkpoint
+        save_checkpoint(model, optimizer, epoch, "checkpoint")
+
+    print("Training finished.")
+
     # save model
-    save_model(model, "model")
+    # save_model(model, "model")
+    print("Model saved.")
