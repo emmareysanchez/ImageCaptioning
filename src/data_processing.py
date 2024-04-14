@@ -1,9 +1,95 @@
+# deep learning libraries
+from torchvision import transforms
+
+# other libraries
+import os
+import kaggle
+import shutil
+from PIL import Image
+
 from typing import List, Tuple, Dict
 from collections import Counter
-import os
+
 import pandas as pd
 import json
-import shutil
+
+
+
+def download_and_prepare_flickr8k_dataset(path: str) -> None:
+    """
+    Download and prepare the Flickr8k dataset from Kaggle and process it.
+
+    Args:
+        path (str): Path to save the processed data.
+    """
+
+    # Kaggle dataset identifier
+    dataset_identifier: str = "adityajn105/flickr8k"
+
+    # Make sure the kaggle.json file is set up and permissions are correct
+    kaggle.api.authenticate()
+
+    # Create path if it doesn't exist
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+    dataset_path = f"{path}/flickr8k"
+
+    # Download dataset
+    # Only download the dataset if it hasn't been downloaded yet
+    if not os.path.exists(dataset_path):
+        kaggle.api.dataset_download_files(dataset_identifier,
+                                          path=dataset_path,
+                                          unzip=True)
+
+        # Prepare directories for processed data
+        if not os.path.exists(f"{dataset_path}/train"):
+            os.makedirs(f"{dataset_path}/train")
+        if not os.path.exists(f"{dataset_path}/val"):
+            os.makedirs(f"{dataset_path}/val")
+        if not os.path.exists(f"{dataset_path}/test"):
+            os.makedirs(f"{dataset_path}/test")
+
+
+        # For inception dataset
+        transform = transforms.Compose(
+        [
+            transforms.Resize((299, 299)),
+        ]
+        )
+
+        images_list = os.listdir(f"{dataset_path}/Images")
+
+        # Split into train and validation
+        # 80% train, 20% validation
+        test_images = images_list[int(len(images_list) * 0.8):]
+        train_images = images_list[: int(len(images_list) * 0.8)]
+
+        # Of the train images, 80% will be used for training and 20% for validation
+        val_images = train_images[int(len(train_images) * 0.8):]
+        train_images = train_images[: int(len(train_images) * 0.8)]
+
+        # Process and save images
+        list_splits = ["train", "val", "test"]
+        list_class_dirs = [train_images, val_images, test_images]
+
+        for i in range(len(list_splits)):
+
+            split = list_splits[i]
+            list_images = list_class_dirs[i]
+
+            # Adjust according to the actual Flickr8k structure on disk
+            images_path = f"{dataset_path}/Images"
+
+            for image_file in list_images:
+                image_path = f"{images_path}/{image_file}"
+                image = Image.open(image_path).convert("RGB")
+                image = transform(image)
+                image.save(f"{dataset_path}/{split}/{image_file}")
+
+        shutil.rmtree(f"{dataset_path}/Images")
+
+    print("Dataset processed and saved.")
 
 
 def tokenize(text: str) -> str:
@@ -60,6 +146,58 @@ def untokenize(text: str) -> str:
     return text
 
 
+def create_lookup_tables(words: List[str]) -> Tuple[Dict[str, int], Dict[int, str]]:
+    """
+    Create lookup tables for vocabulary.
+
+    Args:
+        words (List[str]): A list of words from which to create vocabulary.
+
+    Returns:
+        Tuple[Dict[str, int], Dict[int, str]]: A tuple containing two
+        dictionaries. The first dictionary maps words to integers, and
+        the second dictionary maps integers to words.
+    """
+    word_counts: Counter = Counter(words)
+    sorted_vocab: List[int] = sorted(word_counts, key=word_counts.get, reverse=True)
+
+    int_to_vocab: Dict[int, str] = {ii: word for ii, word in enumerate(sorted_vocab)}
+    vocab_to_int: Dict[str, int] = {word: ii for ii, word in int_to_vocab.items()}
+
+    # Add the PAD token
+    vocab_to_int['<PAD>'] = len(vocab_to_int)
+    int_to_vocab[len(int_to_vocab)] = '<PAD>'
+
+    return vocab_to_int, int_to_vocab
+
+
+def load_and_process_captions_flickr8k(path: str) -> Tuple[dict, dict, dict, List[str]]:
+    """
+    Load and process image captions from the Flickr8k dataset.
+
+    Args:
+        path (str): The path to the directory containing the captions.json
+        file.
+
+    Returns:
+        Tuple[dict, dict, dict, List[str]]: A tuple containing three
+        dictionaries with the image captions for the train, validation and
+        test sets, and a list of all words used in the captions.
+    """
+    organize_caption_flickr8k(path)
+
+    # json_path = create_json(os.path.join(path, 'captions.txt'))
+    json_path_train = path + "/captions_train.json"
+    json_path_val = path + "/captions_val.json"
+    json_path_test = path + "/captions_test.json"
+
+    captions_dict_train, word_list = load_image_captions_from_json(json_path_train)
+    captions_dict_val, _ = load_image_captions_from_json(json_path_val)
+    captions_dict_test, _ = load_image_captions_from_json(json_path_test)
+
+    return captions_dict_train, captions_dict_val, captions_dict_test, word_list
+
+
 def organize_caption_flickr8k(path: str) -> None:
     """"
     Organize the captions from the Flickr8k dataset into JSON files for
@@ -100,47 +238,6 @@ def organize_caption_flickr8k(path: str) -> None:
 
         # Remove the captions.txt file
         os.remove(os.path.join(path, 'captions.txt'))
-
-
-def organize_caption_mscoco(path: str) -> None:
-    """
-    Organize the captions from the MSCOCO dataset into JSON files for
-    each set.
-
-    Args:
-        path (str): path where the data was downloaded.
-    """
-    # FIXME: Modify this function to reorganize the images from the train and val sets
-    # into train, val and test sets.
-    path_in_dir = os.path.join(path, 'coco2017/annotations')
-
-    sets = {'train': os.path.join(path_in_dir, 'captions_train2017.json'),
-            'val': os.path.join(path_in_dir, 'captions_val2017.json')}
-
-    for set_name, set_path in sets.items():
-        with open(set_path, 'r') as json_file:
-            json_data = json.load(json_file)
-
-        image_ids_to_filenames = {image['id']: image['file_name']
-                                  for image in json_data['images']}
-
-        image_captions = {}
-
-        for annotation in json_data['annotations']:
-            image_id = annotation['image_id']
-            caption = annotation['caption']
-            filename = image_ids_to_filenames.get(image_id)
-            if filename:
-                # Append caption to list of captions for the image (if the image exists
-                # in the dictionary, it appends the caption to the list, otherwise it
-                # creates a new list with the caption as the first element)
-                image_captions.setdefault(filename, []).append(caption)
-
-        with open(os.path.join(path, f'captions_{set_name}.json'), 'w') as json_file:
-            json.dump(image_captions, json_file, indent=4)
-
-    # Remove the annotations folder
-    shutil.rmtree(path_in_dir)
 
 
 def load_image_captions_from_json(path: str) -> dict:
@@ -184,62 +281,3 @@ def load_image_captions_from_json(path: str) -> dict:
 
     print(f"Loaded {len(captions_dict)} image captions from {path}")
     return captions_dict, word_list
-
-
-def load_and_process_captions_flickr8k(path: str) -> Tuple[dict, dict, dict, List[str]]:
-    """
-    Load and process image captions from the Flickr8k dataset.
-
-    Args:
-        path (str): The path to the directory containing the captions.json
-        file.
-
-    Returns:
-        Tuple[dict, dict, dict, List[str]]: A tuple containing three
-        dictionaries with the image captions for the train, validation and
-        test sets, and a list of all words used in the captions.
-    """
-    organize_caption_flickr8k(path)
-
-    # json_path = create_json(os.path.join(path, 'captions.txt'))
-    json_path_train = path + "/captions_train.json"
-    json_path_val = path + "/captions_val.json"
-    json_path_test = path + "/captions_test.json"
-
-    captions_dict_train, word_list = load_image_captions_from_json(json_path_train)
-    captions_dict_val, _ = load_image_captions_from_json(json_path_val)
-    captions_dict_test, _ = load_image_captions_from_json(json_path_test)
-
-    return captions_dict_train, captions_dict_val, captions_dict_test, word_list
-
-
-def create_lookup_tables(words: List[str]) -> Tuple[Dict[str, int], Dict[int, str]]:
-    """
-    Create lookup tables for vocabulary.
-
-    Args:
-        words (List[str]): A list of words from which to create vocabulary.
-
-    Returns:
-        Tuple[Dict[str, int], Dict[int, str]]: A tuple containing two
-        dictionaries. The first dictionary maps words to integers, and
-        the second dictionary maps integers to words.
-    """
-    word_counts: Counter = Counter(words)
-    sorted_vocab: List[int] = sorted(word_counts, key=word_counts.get, reverse=True)
-
-    int_to_vocab: Dict[int, str] = {ii: word for ii, word in enumerate(sorted_vocab)}
-    vocab_to_int: Dict[str, int] = {word: ii for ii, word in int_to_vocab.items()}
-
-    # Add the PAD token
-    vocab_to_int['<PAD>'] = len(vocab_to_int)
-    int_to_vocab[len(int_to_vocab)] = '<PAD>'
-
-    return vocab_to_int, int_to_vocab
-
-
-if __name__ == "__main__":
-
-    # Uso de la función
-    path = "./data/flickr8k"
-    captions_dict = load_and_process_captions_flickr8k(path)
