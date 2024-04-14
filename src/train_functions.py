@@ -48,7 +48,6 @@ def train_step(
 
         # We want them to be (max_len, batch_size)
         targets = targets.permute(1, 0)
-        print(targets.shape)
 
         optimizer.zero_grad()
 

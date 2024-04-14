@@ -153,9 +153,10 @@ class ImageCaptioningModel(nn.Module):
 
             for _ in range(max_len):
                 hidden, states = self.decoder.lstm(features, states)
-                output = self.decoder.linear(hidden)
-                predicted = output.argmax(2)[-1].item()
-                caption.append(predicted)
+                output = self.decoder.linear(hidden.squeeze(0))
+                predicted = output.argmax(1)
+                caption.append(predicted.item())
                 if predicted == self.decoder.end_token_index:
                     break
+                features = self.decoder.embedding(predicted).unsqueeze(0)
         return " ".join([idx2word[token] for token in caption])
