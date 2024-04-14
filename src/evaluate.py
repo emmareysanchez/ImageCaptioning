@@ -9,7 +9,7 @@ from typing import Final
 
 # own modules
 from src.utils import set_seed, load_model, generate_caption, load_data, generate_caption3
-from src.model import MyModel
+from src.model import MyModel, ImageCaptioningModel
 
 # TODO: Import necessary libraries
 from PIL import Image, ImageDraw, ImageFont
@@ -54,7 +54,16 @@ def main() -> None:
         "end_token_index": word_to_index["</s>"],
         "dropout": drop_prob,
     }
-    model = MyModel(encoder_params, decoder_params)
+    # model = MyModel(encoder_params, decoder_params)
+    model = ImageCaptioningModel(
+        embedding_size,
+        hidden_size,
+        len(word_to_index),
+        num_layers,
+        word_to_index["<s>"],
+        word_to_index["</s>"],
+    )
+
     model.load_model("model")
     # model = load_model("model")
 
@@ -77,16 +86,17 @@ def main() -> None:
             inputs = inputs.float()
             targets = targets.long()
 
-            outputs = model(inputs, targets)
+            # outputs = model(inputs, targets)
 
             # generate_caption
             # caption = model.generate_batch_captions(inputs, word_to_index, index_to_word)
             # caption = generate_caption3(model, inputs, index_to_word, word_to_index)
 
             # Foreach output
-            for i in range(len(outputs)):
-                caption = generate_caption(outputs[i], index_to_word)
+            for i in range(len(inputs)):
+                # caption = generate_caption(outputs[i], index_to_word)
                 # caption = generate_caption3(model, inputs[i], index_to_word, word_to_index)
+                caption = model.generate_caption(inputs[i].unsqueeze(0), index_to_word)
                 real_caption = target_caption(targets[i], index_to_word)
 
 
