@@ -6,11 +6,6 @@ from torch.utils.tensorboard import SummaryWriter
 
 import tqdm
 
-# # other libraries
-# from typing import Optional
-from src.utils import generate_caption
-
-
 @torch.enable_grad()
 def train_step(
     model: torch.nn.Module,
@@ -50,19 +45,11 @@ def train_step(
         targets = targets.permute(1, 0)
 
         optimizer.zero_grad()
-        print(targets.shape)
-        print(targets[:-1].shape)
 
         outputs = model(inputs, targets[:-1])
 
-        # print(outputs.shape)
-        # print(targets.shape)
-
         outputs_reshaped = outputs.reshape(-1, outputs.shape[2])
         targets_reshaped = targets.reshape(-1)
-
-        # print(outputs_reshaped.shape)
-        # print(targets_reshaped.shape)
 
         loss_value = loss(outputs_reshaped, targets_reshaped)
 
@@ -108,23 +95,13 @@ def val_step(
         inputs = inputs.float()
         targets = targets.long()
 
-        # We generate the caption for the batch
-        # captions = model.generate_batch_captions(inputs, word2_idx, idx2_word)
-        # print('Batch:', captions[0])
-
-        # We compute the loss
-        # outputs = model(inputs, targets)
-        # outputs_reshaped = outputs.reshape(-1, outputs.shape[2])
-        # targets_reshaped = targets.reshape(-1)
-        # loss_value = loss(outputs_reshaped, targets_reshaped)
-
-        # caption = generate_caption(outputs, idx2_word)
-        # print(caption)
-
+        # FIXME: implement for more than one caption
         # generate caption for each target and image
         caption = model.generate_caption(inputs[0].unsqueeze(0), idx2_word)
         print('Caption:', caption)
         break
+
+        # TODO: add error metrics
         # writer.add_scalar("Loss/val", loss_value.item(), epoch)
 
 
@@ -160,8 +137,9 @@ def t_step(
         # Inputs must be float
         inputs = inputs.float()
 
+        # FIXME: implement for more than one caption
         # get the captions of the images of the batch
-        captions = model.generate_batch_captions(inputs, word2_idx, idx2_word)
+        captions = model.genera_captions(inputs[0].unsqueeze(0), idx2_word)
 
         # Add the captions to the list of predictions
         predictions.extend(captions)

@@ -1,34 +1,33 @@
 import torch
-import torch.nn as nn
-
-from src.encoder import ModifiedVGG19, ModifiedInception
-from src.decoder import RNN, DecoderRNN
+from torch import nn
+from torchvision import models
 
 
-class MyModel(nn.Module):
-    """
-    A model that combines an encoder and a decoder for generating image captions.
-
-    Attributes:
-        encoder (ModifiedVGG19): The encoder model.
-        decoder (RNN): The decoder model.
-    """
-
-    def __init__(self, encoder_params, decoder_params):
+class ModifiedInception(nn.Module):
+    def __init__(self, embedding_dim: int, aux_logits: bool = True):
         """
-        Initialize the model.
+        Initialize the modified Inception model.
 
         Args:
-            encoder_params (dict): Dictionary containing the parameters
-            for the encoder.
-            decoder_params (dict): Dictionary containing the parameters
-            for the decoder.
-        """
-        super(MyModel, self).__init__()
-        self.encoder = ModifiedVGG19(**encoder_params)
-        self.decoder = RNN(**decoder_params)
+            embedding_dim (int): The size of the embedding.
 
-    def forward(self, images: torch.Tensor, captions) -> torch.Tensor:
+        """
+        super(ModifiedInception, self).__init__()
+        # Load the pretrained Inception model
+        self.inception = models.inception_v3(pretrained=True, aux_logits=aux_logits)
+        self.inception.fc = nn.Linear(self.inception.fc.in_features, embedding_dim)
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(0.5)
+        self.aux_logits = aux_logits
+
+        # Freeze the parameters of the features for finetuning
+        for name, param in self.inception.named_parameters():
+            if "fc.weight" in name or "fc.bias" in name:
+                param.requires_grad = True
+            else:
+                param.requires_grad = False
+        
+    def forward(self, images: torch.Tensor) -> torch.Tensor:
         """
         Forward pass of the model.
 
@@ -36,127 +35,171 @@ class MyModel(nn.Module):
             images (torch.Tensor): The input images.
 
         Returns:
-            torch.Tensor: The predicted captions.
+            torch.Tensor: The extracted features.
         """
-        features = self.encoder(images)
-        outputs = self.decoder(features, captions)
+        # Directly handle whether to use logits or full outputs
+        outputs = self.inception(images)
+        if self.aux_logits and self.training:
+            features = outputs.logits
+        else:
+            features = outputs  # This assumes the default is just the logits or a tensor
+
+        # Apply dropout and ReLU to the processed features
+        return self.dropout(self.relu(features))
+
+
+class DecoderRNN(nn.Module):
+    """
+    A Decoder RNN that generates captions from image features.
+    """
+    def __init__(
+        self, 
+        vocab_size: int, 
+        embedding_dim: int, 
+        hidden_dim: int, 
+        num_layers: int, 
+        start_token_index: int, 
+        end_token_index: int, 
+        dropout: float = 0.5
+    ):
+        """
+        Initialize the decoder RNN.
+
+        Args:
+            vocab_size (int): The size of the vocabulary.
+            embedding_dim (int): The dimension of word embeddings.
+            hidden_dim (int): The dimension of the hidden state in the LSTM.
+            num_layers (int): The number of layers in the LSTM.
+            start_token_index (int): The index of the start token in the vocabulary.
+            end_token_index (int): The index of the end token in the vocabulary.
+            dropout (float): The dropout rate for regularization.
+        """
+        super(DecoderRNN, self).__init__()
+        self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers, batch_first=True)
+        self.linear = nn.Linear(hidden_dim, vocab_size)
+        self.dropout = nn.Dropout(dropout)
+        self.vocab_size = vocab_size
+        self.start_token_index = start_token_index
+        self.end_token_index = end_token_index
+
+    def forward(self, features: torch.Tensor, captions: torch.Tensor) -> torch.Tensor:
+        """
+        Perform the forward pass.
+
+        Args:
+            features (torch.Tensor): The image features extracted by the encoder.
+            captions (torch.Tensor): The batch of captions (as word indices) for the images.
+
+        Returns:
+            torch.Tensor: The batch of predicted word indices for the captions.
+        """
+        embed = self.dropout(self.embedding(captions))
+
+        # Add the image features to the caption embeddings like if they
+        # were the first word in the sequence
+        # Since we are passing the sentence without the last word,
+        # dimmensions will match for the lstm
+        new_embed = torch.cat((features.unsqueeze(0), embed), dim=0)
+
+        # Pass the embeddings through the LSTM
+        lstm_out, _ = self.lstm(new_embed)
+
+        # Pass the LSTM outputs through the linear layer
+        # to get the predicted word scores
+        outputs = self.linear(lstm_out)
         return outputs
-
-    def generate_caption(self, image: torch.Tensor, vocab, max_len: int = 50) -> str:
-        """
-        Generate a caption for an image.
-
-        Args:
-            image (torch.Tensor): The input image.
-            vocab (Vocab): The vocabulary object.
-            max_len (int): The maximum length of the caption.
-
-        Returns:
-            str: The generated caption.
-        """
-        self.eval()
-        with torch.no_grad():
-            features = self.encoder(image).unsqueeze(0)
-            start_token = vocab("<s>")
-            end_token = vocab("</s>")
-
-            caption = [start_token]
-
-            for _ in range(max_len):
-                captions = torch.tensor(caption).unsqueeze(0)
-                captions = captions.long()
-                outputs = self.decoder(features, captions)
-                predicted = outputs.argmax(2)[-1].item()
-
-                # Add the predicted word to the caption
-
-                if predicted == end_token:
-                    break
-
-                caption.append(predicted)
-
-    def generate_batch_captions(
-        self, images: torch.Tensor, word2_idx, idx2_word, max_len: int = 50
-    ) -> list:
-        """
-        Generate captions for a batch of images.
-
-        Args:
-            images (torch.Tensor): The input images.
-            vocab (Vocab): The vocabulary object.
-            max_len (int): The maximum length of the caption.
-
-        Returns:
-            list: The generated captions.
-        """
-        self.eval()
-        with torch.no_grad():
-            x = self.encoder(images)
-            states = None
-            start_token = word2_idx["<s>"]
-            end_token = word2_idx["</s>"]
-
-            captions = [[start_token] for _ in range(images.shape[0])]
-            for _ in range(max_len):
-                hidden, states = self.decoder.lstm(x, states)
-                output = self.decoder.linear(hidden) # (batch_size, vocab_size)
-                predicted = output.argmax(1)
-
-                for i, token in enumerate(predicted):
-                    if token.item() == end_token:
-                        break
-
-                    captions[i].append(token.item())
-
-                x = self.decoder.embedding(predicted)
-            
-            # remove the start token
-            captions = [caption[1:] for caption in captions]
-
-            # If the word is not in the dictionary we don't add it
-            captions = [
-                " ".join([idx2_word[token] for token in caption])
-                for caption in captions
-            ]
-
-        return captions
-
-    def load_model(self, name: str) -> None:
-        """
-        Load the model from a file.
-
-        Args:
-            path (str): The path to the file.
-        """
-        model = torch.jit.load(f"models/{name}.pt")
-        self.load_state_dict(model.state_dict())
-
 
 
 class ImageCaptioningModel(nn.Module):
-    def __init__(self, embedding_dim, hidden_dim, vocab_size, num_layers, start_token_index, end_token_index):
+    """
+    An Image Captioning Model that combines an encoder and a decoder.
+    """
+    def __init__(
+        self, 
+        embedding_dim: int, 
+        hidden_dim: int, 
+        vocab_size: int, 
+        num_layers: int, 
+        start_token_index: int, 
+        end_token_index: int
+    ):
+        """
+        Initialize the Image Captioning Model.
+
+        Args:
+            embedding_dim (int): The dimension of word embeddings.
+            hidden_dim (int): The dimension of the hidden state in the LSTM.
+            vocab_size (int): The size of the vocabulary.
+            num_layers (int): The number of layers in the LSTM.
+            start_token_index (int): The index of the start token in the vocabulary.
+            end_token_index (int): The index of the end token in the vocabulary.
+        """
         super(ImageCaptioningModel, self).__init__()
         self.encoder = ModifiedInception(embedding_dim)
-        self.decoder = DecoderRNN(vocab_size, embedding_dim, hidden_dim, num_layers, start_token_index, end_token_index)
+        self.decoder = DecoderRNN(vocab_size,
+                                  embedding_dim,
+                                  hidden_dim,
+                                  num_layers,
+                                  start_token_index,
+                                  end_token_index)
     
-    def forward(self, images, captions):
+    def forward(self, images: torch.Tensor, captions: torch.Tensor) -> torch.Tensor:
+        """
+        Perform the forward pass.
+
+        Args:
+            images (torch.Tensor): The batch of images.
+            captions (torch.Tensor): The batch of captions (as word indices) for the images.
+
+        Returns:
+            torch.Tensor: The batch of predicted word indices for the captions.
+        """
         features = self.encoder(images)
         outputs = self.decoder(features, captions)
         return outputs
     
-    def generate_caption(self, image, idx2word, max_len=50):
+    def generate_caption(self, image: torch.Tensor, idx2word: dict, max_len: int = 50) -> str:
+        """
+        Generate a caption for a single image.
+
+        Args:
+            image (torch.Tensor): A single image tensor.
+            idx2word (dict): A mapping from word indices to words.
+            max_len (int): Maximum length for the generated caption.
+
+        Returns:
+            str: The generated caption as a string of words.
+        """
         self.eval()
         caption = []
         with torch.no_grad():
+
+            # Extract features from the image and stablish
+            # the initial state for the lstm as None
             features = self.encoder(image).unsqueeze(0)
             states = None
 
             for _ in range(max_len):
+
+                # Pass the features and the states through the lstm
+                # to get the outputs and the new hidden state
+                # and pass the outputs through the linear layer
+                # to get the predicted word scores
                 hidden, states = self.decoder.lstm(features, states)
                 output = self.decoder.linear(hidden.squeeze(0))
                 predicted = output.argmax(1)
+
+                # Append the predicted word to the caption
                 caption.append(predicted.item())
+
+                # If the predicted word is the end token, stop
                 if predicted == self.decoder.end_token_index:
                     break
+
+                # Get the embedding of the predicted word
+                # to use it in the next iteration as the input
                 features = self.decoder.embedding(predicted).unsqueeze(0)
+
+        # Convert the predicted word indices to words
         return " ".join([idx2word[token] for token in caption])
