@@ -96,10 +96,11 @@ class Vocabulary:
                     frequencies[word] = 1
                 else:
                     frequencies[word] += 1
-                if frequencies[word] == self.freq_threshold:
+                if frequencies[word] == self.freq_threshold and word not in self.word2idx:
                     self.word2idx[word] = idx
                     self.idx2word[idx] = word
                     idx += 1
+
 
     def caption_to_indices(self, caption: str) -> list:
         """
