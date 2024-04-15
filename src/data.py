@@ -135,7 +135,8 @@ class Flickr8kDataset(Dataset):
             self.vocab = Vocabulary(freq_threshold=5)
             self.vocab.build_vocabulary(self.captions.tolist())
         
-        print(f"Vocabulary size: {len(self.vocab)}")
+        self.captions_tokenized = torch.tensor([self.vocab.caption_to_indices(caption) for caption in self.captions])
+        
 
 
     def __len__(self):
@@ -145,7 +146,7 @@ class Flickr8kDataset(Dataset):
 
         # Load image path and captions
         image_path = self.image_names[index]
-        caption = self.captions[index]
+        caption_tensor = self.captions_tokenized[index]
 
         # Load image transforming it to tensor
         image = Image.open(self.images_path + "/" + image_path)
@@ -153,10 +154,10 @@ class Flickr8kDataset(Dataset):
             image = self.transform(image)
 
         # Convert caption to indices
-        caption_ids = self.vocab.caption_to_indices(caption)
-        captions_tensor = torch.tensor(caption_ids)
+        # caption_ids = self.vocab.caption_to_indices(caption)
+        # captions_tensor = torch.tensor(caption_ids)
 
-        return image, captions_tensor
+        return image, caption_tensor
 
 
 class CollateFn:
