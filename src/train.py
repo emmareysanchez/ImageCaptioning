@@ -72,6 +72,10 @@ def main():
             # Save a checkpoint
             save_checkpoint(model, optimizer, epoch, "checkpoint")
 
+            # We save a checkpoint every 5 epochs
+            if epoch % 5 == 0:
+                save_checkpoint(model, optimizer, epoch, f"checkpoint_{epoch}_{learning_rate}")
+
         print("Training finished.")
 
         # TODO: Implement the test of the model
