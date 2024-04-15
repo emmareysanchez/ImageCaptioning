@@ -15,6 +15,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 
+from tqdm import tqdm
+
 # static variables
 DATA_PATH: Final[str] = "data"
 NUM_CLASSES: Final[int] = 10
@@ -46,7 +48,7 @@ def main() -> None:
     model = ImageCaptioningModel(
         embedding_size,
         hidden_size,
-        len(word_to_index),
+        len(index_to_word),
         num_layers,
         word_to_index["<s>"],
         word_to_index["</s>"],
@@ -67,7 +69,7 @@ def main() -> None:
 
         batch_idx = 0
 
-        for inputs, targets in test_loader:
+        for inputs, targets in tqdm(test_loader):
 
             batch_idx += 1
             inputs = inputs.to(device)
@@ -77,35 +79,32 @@ def main() -> None:
             inputs = inputs.float()
             targets = targets.long()
 
-            # Foreach output
-            for i in range(len(inputs)):
+            caption = model.generate_caption(inputs, index_to_word)
+            real_caption = target_caption(targets, index_to_word)
 
-                caption = model.generate_caption(inputs[i].unsqueeze(0), index_to_word)
-                real_caption = target_caption(targets[i], index_to_word)
+            words = caption.split()
+            
+            # Add \n every 10 words
+            caption = ""
+            for j, word in enumerate(words):
+                caption += word + " "
+                if j % 10 == 0 and j != 0:
+                    caption += "\n"
 
-                words = caption.split()
-                
-                # Add \n every 10 words
-                caption = ""
-                for j, word in enumerate(words):
-                    caption += word + " "
-                    if j % 10 == 0 and j != 0:
-                        caption += "\n"
+            # Save image and caption in "solution" folder
+            # Will have to create it if necessary
+            image = inputs.squeeze(0).cpu().numpy().transpose((1, 2, 0))
+            
+            image = (image * 255).astype(np.uint8)  # Assuming image was normalized
+            image = Image.fromarray(image)
 
-                # Save image and caption in "solution" folder
-                # Will have to create it if necessary
-                image = inputs[i].cpu().numpy().transpose((1, 2, 0))
-                
-                image = (image * 255).astype(np.uint8)  # Assuming image was normalized
-                image = Image.fromarray(image)
-
-                plt.figure()
-                plt.imshow(image)
-                plt.title(f"Predicted: {caption}\nReal: {real_caption}", fontsize=8)
-                plt.axis('off')
-                plt.tight_layout(pad=3.0)
-                plt.savefig(f"{solution_dir}/image_{batch_idx}_{i}.png", dpi=300)
-                plt.close()
+            plt.figure()
+            plt.imshow(image)
+            plt.title(f"Predicted: {caption}\nReal: {real_caption}", fontsize=8)
+            plt.axis('off')
+            plt.tight_layout(pad=3.0)
+            plt.savefig(f"{solution_dir}/image_{batch_idx}.png", dpi=300)
+            plt.close()
 
 
 if __name__ == "__main__":
