@@ -41,6 +41,7 @@ def train_step(
         inputs = inputs.float()
         targets = targets.long()
 
+
         # We want them to be (max_len, batch_size)
         targets = targets.permute(1, 0)
 

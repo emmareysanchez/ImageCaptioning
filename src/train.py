@@ -23,7 +23,7 @@ DATA_PATH: str = "data"
 CHECKPOINT_PATH: str = "checkpoint"
 
 need_to_train = True
-need_to_load = True
+need_to_load = False
 
 
 def main():
