@@ -77,33 +77,40 @@ def main() -> None:
             inputs = inputs.float()
             targets = targets.long()
 
-            caption = model.generate_caption(inputs, index_to_word)
             real_caption = target_caption(targets, index_to_word)
 
-            words = caption.split()
+            if batch_idx % 5 == 0:
 
-            # Add \n every 10 words
-            caption = ""
-            for j, word in enumerate(words):
-                caption += word + " "
-                if j % 10 == 0 and j != 0:
-                    caption += "\n"
+                # Only generate the caption ones for the five images
+                # that are the same
+                caption = model.generate_caption(inputs, index_to_word)
 
-            # Save image and caption in "solution" folder
-            # Will have to create it if necessary
-            image = inputs.squeeze(0).cpu().numpy().transpose((1, 2, 0))
+                words = caption.split()
 
-            image = (image * 255).astype(np.uint8)  # Assuming image was normalized
-            image = Image.fromarray(image)
+                # Add \n every 10 words
+                caption = ""
+                for j, word in enumerate(words):
+                    caption += word + " "
+                    if j % 10 == 0 and j != 0:
+                        caption += "\n"
 
-            plt.figure()
-            plt.imshow(image)
-            plt.title(f"Predicted: {caption}\nReal: {real_caption}", fontsize=8)
-            plt.axis('off')
-            plt.tight_layout(pad=3.0)
-            plt.savefig(f"{solution_dir}/image_{batch_idx}.png", dpi=300)
-            plt.close()
+                # Save image and caption in "solution" folder
+                # Will have to create it if necessary
+                image = inputs.squeeze(0).cpu().numpy().transpose((1, 2, 0))
 
+                image = (image * 255).astype(np.uint8)  # Assuming image was normalized
+                image = Image.fromarray(image)
+
+                plt.figure()
+                plt.imshow(image)
+                plt.title(f"Predicted: {caption}\nReal: {real_caption}", fontsize=8)
+                plt.axis('off')
+                plt.tight_layout(pad=3.0)
+                plt.savefig(f"{solution_dir}/image_{batch_idx}.png", dpi=300)
+                plt.close()
+
+            # TODO: im
+    print("Evaluation finished.")
 
 if __name__ == "__main__":
     main()

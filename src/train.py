@@ -37,6 +37,8 @@ def main():
     hidden_size = 256
     num_layers = 1
 
+    checkpoint_save_path = CHECKPOINT_PATH + "_" + dataset_name + "_" + str(learning_rate)
+
     # load data
     (train_loader, val_loader, _,
      word_to_index, index_to_word) = load_data(DATA_PATH, dataset_name, batch_size)
@@ -71,25 +73,27 @@ def main():
         # train model showing progress
         for epoch in range(start_epoch, epochs):
             print(f"Epoch {epoch + 1}/{epochs}")
-            train_step(model, train_loader, loss, optimizer, writer, epoch, device)
+            # train_step(model, train_loader, loss, optimizer, writer, epoch, device)
             val_step(model, val_loader, loss, writer, epoch,
                      device, word_to_index, index_to_word)
 
-            # Save a checkpoint
-            save_checkpoint(model, optimizer, epoch, "checkpoint")
+            # Save a checkpoint into the checkpoint folder
+            save_checkpoint(model, optimizer, epoch, 'checkpoint')
 
-            # We save a checkpoint every 5 epochs
-            if epoch % 5 == 0:
-                save_checkpoint(model, optimizer, epoch,
-                                f"checkpoint_{epoch}_{learning_rate}")
+            # We save a checkpoint every 10 epochs into an specific folder
+            # for the model
+            if epoch % 10 == 0:
+                save_checkpoint(model, optimizer, epoch, checkpoint_save_path, f"checkpoint_{epoch}")
 
+        # Save the model into the models folder
+        save_checkpoint(model, optimizer, epochs, "models", "model")
         print("Training finished.")
 
         # TODO: Implement the test of the model
 
     else:
         # We load the model from the models folder
-        model = torch.load('models/model.pth')
+        _, model, _ = load_checkpoint(model, None, "models", "model")
 
 
 if __name__ == "__main__":

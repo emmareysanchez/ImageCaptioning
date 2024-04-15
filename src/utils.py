@@ -156,6 +156,7 @@ def save_checkpoint(
     optimizer: torch.optim.Optimizer,
     epoch: int,
     path: str,
+    name: str = "checkpoint",
 ) -> None:
     """
     This function saves a checkpoint of the model and optimizer.
@@ -177,9 +178,9 @@ def save_checkpoint(
             "model_state_dict": model.state_dict(),
             "optimizer_state_dict": optimizer.state_dict(),
         },
-        f"{path}/checkpoint.pth",
+        f"{path}/{name}.pth",
     )
-    print("Checkpoint saved at 'checkpoint.pth'")
+    print(f"Checkpoint saved at '{path}/{name}.pth'")
     return None
 
 
@@ -187,6 +188,7 @@ def load_checkpoint(
     model: torch.nn.Module,
     optimizer: torch.optim.Optimizer,
     path: str,
+    name: str = "checkpoint",
 ) -> tuple[int, torch.nn.Module, torch.optim.Optimizer]:
     """
     This function loads a checkpoint of the model and optimizer.
@@ -201,7 +203,7 @@ def load_checkpoint(
         model and optimizer.
     """
     # Load the checkpoint
-    checkpoint = torch.load(f"{path}/checkpoint.pth")
+    checkpoint = torch.load(f"{path}/{name}.pth")
 
     # Load the model and optimizer
     model.load_state_dict(checkpoint["model_state_dict"])
