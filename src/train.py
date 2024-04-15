@@ -45,7 +45,7 @@ def main():
 
     if need_to_train:
         # model = MyModel(encoder_params, decoder_params)
-        model = ImageCaptioningModel(embedding_size, hidden_size, len(word_to_index), num_layers,
+        model = ImageCaptioningModel(embedding_size, hidden_size, len(index_to_word), num_layers,
                                      word_to_index['<s>'], word_to_index['</s>'])
         model.to(device)
 

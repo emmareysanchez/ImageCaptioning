@@ -58,7 +58,7 @@ def load_data(
     batch_size: int = 64,
     shuffle: bool = False,
     drop_last: bool = True,
-    num_workers: int = 0,
+    num_workers: int = 2,
 ) -> tuple[DataLoader, DataLoader, DataLoader, float, float]:
     """
     This function loads the data and preprocesses it.
