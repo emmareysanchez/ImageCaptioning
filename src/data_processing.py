@@ -92,7 +92,7 @@ def download_and_prepare_dataset(path: str, dataset_name: str) -> None:
                 image = transform(image)
                 image.save(f"{dataset_path}/{split}/{image_file}")
 
-        shutil.rmtree(f"{dataset_path}/Images")
+        shutil.rmtree(images_path)
 
     print("Dataset processed and saved.")
 
