@@ -24,8 +24,7 @@ class Vocabulary:
         self.word2idx = {"<PAD>": 0,
                      "<s>": 1,
                      "</s>": 2,
-                     "<UNK>": 3,
-                     "<PERIOD>": 4}
+                     "<UNK>": 3}
         self.freq_threshold = freq_threshold
     
     def __len__(self) -> int:
