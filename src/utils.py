@@ -18,10 +18,11 @@ from nltk.translate.meteor_score import meteor_score
 # Libraries for data processing
 from torch.utils.data import DataLoader
 from src.data_processing import (download_and_prepare_flickr8k_dataset,
-    load_and_process_captions_flickr8k,
-    create_lookup_tables,
+    divide_captions_flickr8k
 )
-from src.data import ImageAndCaptionsDataset
+from src.data import CollateFn, Flickr8kDataset
+
+import torchvision.transforms as transforms
 
 
 def set_seed(seed: int) -> None:
@@ -72,80 +73,43 @@ def load_data(
         num_workers (int): number of workers to load the data.
 
     Returns:
-        tuple[DataLoader, DataLoader, DataLoader, float, float]: tuple with
+        tuple[DataLoader, DataLoader, DataLoader, dict, dict]: tuple with
         the training, validation and test dataloaders, and the word_to_index
         and index_to_word dictionaries.
     """
-
-    # load and preprocess data
+    # Download and devide images into train, val and test
     download_and_prepare_flickr8k_dataset(path)
+
+    # Load and process captions into txt files
     captions_path = path + '/flickr8k'
-    captions_dict_train, captions_dict_val, captions_dict_test, word_list = (
-        load_and_process_captions_flickr8k(captions_path)
-    )
+    divide_captions_flickr8k(captions_path)
 
-    # Create lookup tables
-    word_to_index, index_to_word = create_lookup_tables(word_list)
-
-    # Change captions to indices
-    captions_dict_train = captions_to_indices(captions_dict_train, word_to_index)
-    captions_dict_val = captions_to_indices(captions_dict_val, word_to_index)
-    captions_dict_test = captions_to_indices(captions_dict_test, word_to_index)
-
-    # All captions must be the same length
-    # We will use the length of the longest caption
-    max_length_train = max(
+    transform = transforms.Compose(
         [
-            len(caption)
-            for captions in captions_dict_train.values()
-            for caption in captions
+            transforms.ToTensor(),
         ]
     )
 
-    max_length_test = max(
-        [
-            len(caption)
-            for captions in captions_dict_test.values()
-            for caption in captions
-        ]
-    )
+    train_path_c = f"{path}/flickr8k/captions_train.txt"
+    val_path_c = f"{path}/flickr8k/captions_val.txt"
+    test_path_c = f"{path}/flickr8k/captions_test.txt"
 
-    max_length_val = max(
-        [
-            len(caption)
-            for captions in captions_dict_val.values()
-            for caption in captions
-        ]
-    )
+    train_path_i = f"{path}/flickr8k/train"
+    val_path_i = f"{path}/flickr8k/val"
+    test_path_i = f"{path}/flickr8k/test"
 
-    # Update the lenght of the captions
-    # Show the first element of the dictionary
-    for key in captions_dict_train:
-        for caption in captions_dict_train[key]:
-            caption += [word_to_index["<PAD>"]] * (max_length_train - len(caption))
+    # Define the datasets
+    train_dataset = Flickr8kDataset(train_path_c, train_path_i, transform=transform)
 
+    # Since we will only consider the words in the train set
+    # as vocab we will pass it to the validation and test
+    # datasets
 
-    for key in captions_dict_val:
-        for caption in captions_dict_val[key]:
-            caption += [word_to_index["<PAD>"]] * (max_length_val - len(caption))
+    pad_idx = train_dataset.vocab.word2idx["<PAD>"]
+    vocab = train_dataset.vocab
 
-    for key in captions_dict_test:
-        for caption in captions_dict_test[key]:
-            caption += [word_to_index["<PAD>"]] * (max_length_test - len(caption))
-
-    # We only keep the first caption
-    captions_dict_train = {key: captions_dict_train[key][0] for key in captions_dict_train}
-    captions_dict_val = {key: captions_dict_val[key][0] for key in captions_dict_val}
-    captions_dict_test = {key: captions_dict_test[key][0] for key in captions_dict_test}
-
-    train_path = f"{path}/flickr8k/train"
-    val_path = f"{path}/flickr8k/val"
-    test_path = f"{path}/flickr8k/test"
-
-    # Create for training, test and validation datasets
-    train_dataset = ImageAndCaptionsDataset(train_path, captions_dict_train)
-    val_dataset = ImageAndCaptionsDataset(val_path, captions_dict_val)
-    test_dataset = ImageAndCaptionsDataset(test_path, captions_dict_test)
+    val_dataset = Flickr8kDataset(val_path_c, val_path_i, transform=transform, vocab=vocab)
+    test_dataset = Flickr8kDataset(test_path_c, test_path_i, transform=transform, vocab=vocab)
 
     # Create dataloaders
     train_loader = DataLoader(
@@ -154,74 +118,25 @@ def load_data(
         shuffle=shuffle,
         drop_last=drop_last,
         num_workers=num_workers,
-    )
+        collate_fn=CollateFn(pad_idx))
+    
     val_loader = DataLoader(
         val_dataset,
         batch_size=batch_size,
         shuffle=shuffle,
         drop_last=drop_last,
         num_workers=num_workers,
-    )
+        collate_fn=CollateFn(pad_idx))
+    
     test_loader = DataLoader(
         test_dataset,
         batch_size=batch_size,
         shuffle=shuffle,
         drop_last=drop_last,
         num_workers=num_workers,
-    )
+        collate_fn=CollateFn(pad_idx))
 
-    return train_loader, val_loader, test_loader, word_to_index, index_to_word
-
-
-def captions_to_indices(captions: dict, word_to_index: dict) -> dict:
-    """
-    This function converts captions to indices.
-
-    Args:
-        captions (dict): dictionary with the captions.
-            - the key is the image name.
-            - the value is a list of captions.
-
-        word_to_index (dict): dictionary to convert words to indices.
-
-    Returns:
-        dict: dictionary with the captions as indices.
-    """
-    # Change captions to indices
-    # The key will be the image name and the value will be a list of lists
-    # with the indices of the words
-    # If the word is not in the dictionary, we will ignore it
-    captions_indices = {
-        key: [
-            [word_to_index[word] for word in caption.split() if word in word_to_index]
-            for caption in captions[key]
-        ]
-        for key in captions
-    }
-
-    return captions_indices
-
-
-def indices_to_captions(captions: dict, index_to_word: dict) -> dict:
-    """
-    This function converts captions from indices to words.
-
-    Args:
-        captions (dict): dictionary with the captions as indices.
-        index_to_word (dict): dictionary to convert indices to words.
-
-    Returns:
-        dict: dictionary with the captions as words.
-    """
-    # Change captions to words
-    captions_words = {
-        key: [
-            " ".join([index_to_word[index] for index in caption])
-            for caption in captions[key]
-        ]
-        for key in captions
-    }
-    return captions_words
+    return train_loader, val_loader, test_loader, vocab.word2idx, vocab.idx2word   # XXX: Lo mismo es mejor devolver solo el vocab
 
 
 def save_checkpoint(

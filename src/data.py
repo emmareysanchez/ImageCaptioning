@@ -1,67 +1,194 @@
 # deep learning libraries
 import torch
 from torch.utils.data import Dataset
-from torchvision import transforms
+from torch.nn.utils.rnn import pad_sequence
 
 # other libraries
-import os
 from PIL import Image
 
+import pandas as pd
 
-class ImageAndCaptionsDataset(Dataset):
-    """
-    This class is the Image and Captions Dataset.
 
-    Attributes:
-        path (str): path of the dataset.
-        names (list): list with the names of the images.
-        captions (dict): dictionary with the captions, where the key is the
-        name of the image and the value is a list with the captions.
-    """
-
-    def __init__(self, path: str, captions_dict: dict) -> None:
+class Vocabulary:
+    def __init__(self, freq_threshold: int) -> None:
         """
-        Constructor of Flikr8kDataset.
+        Initialize the Vocabulary object.
 
         Args:
-            path (str): path of the dataset.
-            captions_dict (dict): dictionary with the captions, where the
-            key is the name of the image and the value is a list with the
-            captions.
+            freq_threshold (int): The frequency threshold for including a word in the vocabulary.
         """
-        self.path = path
-        self.names = os.listdir(path)
-        self.captions = captions_dict
-
+        self.idx2word = {0: "<PAD>",
+                     1: "<s>",
+                     2: "</s>",
+                     3: "<UNK>",
+                     4: "<PERIOD>",
+                     5: "<COMMA>",
+                     6: "<QUOTATION_MARK>",
+                     7: "<SEMICOLON>",
+                     8: "<EXCLAMATION_MARK>",
+                     9: "<QUESTION_MARK>",
+                     10: "<LEFT_PAREN>",
+                     11: "<RIGHT_PAREN>",
+                     12: "<HYPHENS>",
+                     13: "<COLON>"}
+        self.word2idx = {"<PAD>": 0,
+                     "<s>": 1,
+                     "</s>": 2,
+                     "<UNK>": 3,
+                     "<PERIOD>": 4,
+                     "<COMMA>": 5,
+                     "<QUOTATION_MARK>": 6,
+                     "<SEMICOLON>": 7,
+                     "<EXCLAMATION_MARK>": 8,
+                     "<QUESTION_MARK>": 9,
+                     "<LEFT_PAREN>": 10,
+                     "<RIGHT_PAREN>": 11,
+                     "<HYPHENS>": 12,
+                     "<COLON>": 13}
+        self.freq_threshold = freq_threshold
+    
     def __len__(self) -> int:
         """
-        This method returns the length of the dataset.
-
-        Returns:
-            int: length of the dataset.
+        Return the length of the vocabulary.
         """
-        return len(self.names)
-
-    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
+        return len(self.idx2word)
+    
+    @staticmethod
+    def tokenizer(text: str) -> list:
         """
-        This method loads an item based on the index.
-
-        Args:
-            index (int): index of the item to load.
-
-        Returns:
-            tuple[torch.Tensor, torch.Tensor]: tuple with the image and
-            the captions. Image dimensions: [channels, height, width].
+        Tokenize the text.
         """
+
+        text = text.lower().replace('"', '').replace("'", '')
+
+        if text[-1] == '.':
+            text = text[:-1]
+
+        text = text.strip()
+        text = " ".join(text.split())
+        text = "<s> " + text + " </s>"
+
+        text = text.replace(".", " <PERIOD> ")
+        text = text.replace(",", " <COMMA> ")
+        text = text.replace('"', " <QUOTATION_MARK> ")
+        text = text.replace(";", " <SEMICOLON> ")
+        text = text.replace("!", " <EXCLAMATION_MARK> ")
+        text = text.replace("?", " <QUESTION_MARK> ")
+        text = text.replace("(", " <LEFT_PAREN> ")
+        text = text.replace(")", " <RIGHT_PAREN> ")
+        text = text.replace("--", " <HYPHENS> ")
+        text = text.replace("?", " <QUESTION_MARK> ")
+        text = text.replace(":", " <COLON> ")
+        return text.split(" ")
+
+    @staticmethod
+    def untokenizer(tokens: list) -> str:
+        """
+        Untokenize the tokens.
+        """
+        text = " ".join(tokens)
+        text = text.replace(" <PERIOD> ", ".")
+        text = text.replace(" <COMMA> ", ",")
+        text = text.replace(" <QUOTATION_MARK> ", '"')
+        text = text.replace(" <SEMICOLON> ", ";")
+        text = text.replace(" <EXCLAMATION_MARK> ", "!")
+        text = text.replace(" <QUESTION_MARK> ", "?")
+        text = text.replace(" <LEFT_PAREN> ", "(")
+        text = text.replace(" <RIGHT_PAREN> ", ")")
+        text = text.replace(" <HYPHENS> ", "--")
+        text = text.replace(" <QUESTION_MARK> ", "?")
+        text = text.replace(" <COLON> ", ":")
+        text = text.replace("<s>", "")
+        text = text.replace("</s>", "")
+        return text
+
+    def build_vocabulary(self, sentences: list):
+        """
+        Build the vocabulary with the words that appear
+        at least `freq_threshold` times in the sentences.
+        """
+        frequencies = {}
+        idx = len(self.idx2word)
+        for sentence in sentences:
+            for word in self.tokenizer(sentence):
+                if word not in frequencies:
+                    frequencies[word] = 1
+                else:
+                    frequencies[word] += 1
+                if frequencies[word] == self.freq_threshold:
+                    self.word2idx[word] = idx
+                    self.idx2word[idx] = word
+                    idx += 1
+
+    def caption_to_indices(self, caption: str) -> list:
+        """
+        Convert a caption to a list of word indices.
+        """
+        tokens = self.tokenizer(caption)
+        return [self.word2idx.get(token, self.word2idx["<UNK>"]) for token in tokens]
+
+
+    def indices_to_caption(self, indices: list) -> str:
+        """
+        Convert a list of word indices to a caption.
+        """
+        tokens = [self.idx2word.get(index, "<UNK>") for index in indices]
+        return self.untokenizer(tokens)
+
+
+class Flickr8kDataset(Dataset):
+    def __init__(self, captions_path: str, images_path: str, transform=None, vocab=None):
+        self.captions_path = captions_path
+        self.images_path = images_path
+
+        self.df = pd.read_csv(captions_path)
+        self.transform = transform
+
+        self.image_names = self.df["image"]
+        self.captions = self.df["caption"]
+
+        if vocab:
+            self.vocab = vocab
+        else:
+            self.vocab = Vocabulary(freq_threshold=5)
+            self.vocab.build_vocabulary(self.captions.tolist())
+        
+        print(f"Vocabulary size: {len(self.vocab)}")
+
+
+    def __len__(self):
+        return len(self.image_names)
+
+    def __getitem__(self, index):
+
         # Load image path and captions
-        image_path: str = f"{self.path}/{self.names[index]}"
-        captions: list = self.captions[self.names[index]]
-        captions: torch.Tensor = torch.tensor(captions)
+        image_path = self.image_names[index]
+        caption = self.captions[index]
 
         # Load image transforming it to tensor
-        transformations = transforms.Compose([transforms.ToTensor()])
-        image = Image.open(image_path)
-        image = transformations(image)
+        image = Image.open(self.images_path + "/" + image_path)
+        if self.transform:
+            image = self.transform(image)
 
-        # Return image and captions
-        return image, captions
+        # Convert caption to indices
+        caption_ids = self.vocab.caption_to_indices(caption)
+        captions_tensor = torch.tensor(caption_ids)
+
+        return image, captions_tensor
+
+
+class CollateFn:
+    def __init__(self, pad_idx: int):
+        self.pad_idx = pad_idx
+
+    def __call__(self, batch):
+        images = [item[0].unsqueeze(0) for item in batch]
+        captions = [item[1] for item in batch]
+
+        # concat the images
+        images = torch.cat(images, dim=0)
+
+        # pad the captions
+        captions = pad_sequence(captions, batch_first=False, padding_value=self.pad_idx)
+
+        return images, captions

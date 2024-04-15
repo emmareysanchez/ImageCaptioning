@@ -80,8 +80,8 @@ class DecoderRNN(nn.Module):
         self.linear = nn.Linear(hidden_dim, vocab_size)
         self.dropout = nn.Dropout(dropout)
         self.vocab_size = vocab_size
-        self.start_token_index = start_token_index
-        self.end_token_index = end_token_index
+        self.start_token_index = start_token_index  # XXX: ¿Esto se usa??
+        self.end_token_index = end_token_index      # XXX: ¿Esto se usa??
 
     def forward(self, features: torch.Tensor, captions: torch.Tensor) -> torch.Tensor:
         """

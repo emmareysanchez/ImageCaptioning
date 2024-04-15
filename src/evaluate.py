@@ -36,7 +36,6 @@ def main() -> None:
     embedding_size = 256
     hidden_size = 256
     num_layers = 1
-    drop_prob = 0.5
 
     # load data
     (_, _, test_loader, word_to_index, index_to_word) = load_data(
