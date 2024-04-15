@@ -35,7 +35,7 @@ class Vocabulary:
         return len(self.idx2word)
     
     @staticmethod
-    def tokenizer(text: str) -> list:
+    def tokenizer(text: str, extra_tokens: bool=False) -> list:
         """
         Tokenize the text.
         """
@@ -49,17 +49,18 @@ class Vocabulary:
         text = " ".join(text.split())
         text = "<s> " + text + " </s>"
 
-        text = text.replace(".", " <PERIOD> ")
-        text = text.replace(",", " <COMMA> ")
-        text = text.replace('"', " <QUOTATION_MARK> ")
-        text = text.replace(";", " <SEMICOLON> ")
-        text = text.replace("!", " <EXCLAMATION_MARK> ")
-        text = text.replace("?", " <QUESTION_MARK> ")
-        text = text.replace("(", " <LEFT_PAREN> ")
-        text = text.replace(")", " <RIGHT_PAREN> ")
-        text = text.replace("--", " <HYPHENS> ")
-        text = text.replace("?", " <QUESTION_MARK> ")
-        text = text.replace(":", " <COLON> ")
+        if extra_tokens:
+            text = text.replace(".", " <PERIOD> ")
+            text = text.replace(",", " <COMMA> ")
+            text = text.replace('"', " <QUOTATION_MARK> ")
+            text = text.replace(";", " <SEMICOLON> ")
+            text = text.replace("!", " <EXCLAMATION_MARK> ")
+            text = text.replace("?", " <QUESTION_MARK> ")
+            text = text.replace("(", " <LEFT_PAREN> ")
+            text = text.replace(")", " <RIGHT_PAREN> ")
+            text = text.replace("--", " <HYPHENS> ")
+            text = text.replace("?", " <QUESTION_MARK> ")
+            text = text.replace(":", " <COLON> ")
         return text.split(" ")
 
     @staticmethod
@@ -105,7 +106,7 @@ class Vocabulary:
         """
         Convert a caption to a list of word indices.
         """
-        tokens = self.tokenizer(caption)
+        tokens = self.tokenizer(caption, extra_tokens=True)
         return [self.word2idx.get(token, self.word2idx["<UNK>"]) for token in tokens]
 
 
