@@ -15,26 +15,27 @@ class Vocabulary:
         Initialize the Vocabulary object.
 
         Args:
-            freq_threshold (int): The frequency threshold for including a word in the vocabulary.
+            freq_threshold (int): The frequency threshold for including
+            a word in the vocabulary.
         """
         self.idx2word = {0: "<PAD>",
-                     1: "<s>",
-                     2: "</s>",
-                     3: "<UNK>"}
+                         1: "<s>",
+                         2: "</s>",
+                         3: "<UNK>"}
         self.word2idx = {"<PAD>": 0,
-                     "<s>": 1,
-                     "</s>": 2,
-                     "<UNK>": 3}
+                         "<s>": 1,
+                         "</s>": 2,
+                         "<UNK>": 3}
         self.freq_threshold = freq_threshold
-    
+
     def __len__(self) -> int:
         """
         Return the length of the vocabulary.
         """
         return len(self.idx2word)
-    
+
     @staticmethod
-    def tokenizer(text: str, extra_tokens: bool=False) -> list:
+    def tokenizer(text: str, extra_tokens: bool = False) -> list:
         """
         Tokenize the text.
         """
@@ -96,11 +97,11 @@ class Vocabulary:
                     frequencies[word] = 1
                 else:
                     frequencies[word] += 1
-                if frequencies[word] == self.freq_threshold and word not in self.word2idx:
+                if (frequencies[word] == self.freq_threshold
+                   and word not in self.word2idx):
                     self.word2idx[word] = idx
                     self.idx2word[idx] = word
                     idx += 1
-
 
     def caption_to_indices(self, caption: str) -> list:
         """
@@ -108,7 +109,6 @@ class Vocabulary:
         """
         tokens = self.tokenizer(caption, extra_tokens=True)
         return [self.word2idx.get(token, self.word2idx["<UNK>"]) for token in tokens]
-
 
     def indices_to_caption(self, indices: list) -> str:
         """
@@ -118,8 +118,28 @@ class Vocabulary:
         return self.untokenizer(tokens)
 
 
-class Flickr8kDataset(Dataset):
+class ImageAndCaptionsDataset(Dataset):
+    """
+    Dataset class for the Image and Captions dataset.
+
+    Attributes:
+        captions_path (str): path to the captions file.
+        images_path (str): path to the images folder.
+        df (pd.DataFrame): dataframe with the captions.
+        transform (callable): transform to apply to the images.
+        image_names (pd.Series): series with the image names.
+        vocab (Vocabulary): vocabulary object.
+    """
     def __init__(self, captions_path: str, images_path: str, transform=None, vocab=None):
+        """
+        Initialize the ImageAndCaptionsDataset object.
+
+        Args:
+            captions_path (str): path to the captions file.
+            images_path (str): path to the images folder.
+            transform (callable): transform to apply to the images.
+            vocab (Vocabulary): vocabulary object.
+        """
         self.captions_path = captions_path
         self.images_path = images_path
 
@@ -134,15 +154,28 @@ class Flickr8kDataset(Dataset):
         else:
             self.vocab = Vocabulary(freq_threshold=5)
             self.vocab.build_vocabulary(self.captions.tolist())
-        
+
         print(f"Vocabulary size: {len(self.vocab)}")
 
-
     def __len__(self):
+        """
+        Return the length of the dataset.
+
+        Returns:
+            int: length of the dataset.
+        """
         return len(self.image_names)
 
     def __getitem__(self, index):
+        """
+        Get the item at the specified index.
 
+        Args:
+            index (int): index of the item.
+
+        Returns:
+            tuple: tuple with the image and the tokenized caption.
+        """
         # Load image path and captions
         image_path = self.image_names[index]
         caption = self.captions[index]
@@ -160,10 +193,31 @@ class Flickr8kDataset(Dataset):
 
 
 class CollateFn:
+    """
+    Collate function to use in the DataLoader.
+
+    Attributes:
+        pad_idx (int): index of the padding token.
+    """
     def __init__(self, pad_idx: int):
+        """
+        Initialize the CollateFn object.
+
+        Args:
+            pad_idx (int): index of the padding token.
+        """
         self.pad_idx = pad_idx
 
     def __call__(self, batch):
+        """
+        Call the CollateFn object.
+
+        Args:
+            batch (list): list of tuples with the images and captions.
+
+        Returns:
+            tuple: tuple with the images and the padded captions.
+        """
         images = [item[0].unsqueeze(0) for item in batch]
         captions = [item[1] for item in batch]
 

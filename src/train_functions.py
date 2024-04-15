@@ -6,6 +6,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 import tqdm
 
+
 @torch.enable_grad()
 def train_step(
     model: torch.nn.Module,
@@ -54,7 +55,6 @@ def train_step(
         optimizer.step()
 
         writer.add_scalar("Loss/train", loss_value.item(), epoch)
-        
 
 
 @torch.no_grad()
@@ -78,6 +78,8 @@ def val_step(
         writer (SummaryWriter): writer for tensorboard.
         epoch (int): epoch of the validation.
         device (torch.device): device for running operations.
+        word2_idx (dict): dictionary to convert words to indexes.
+        idx2_word (dict): dictionary to convert indexes to words.
     """
     model.to(device)
     # Model in evaluation mode
@@ -117,6 +119,8 @@ def t_step(
         model (torch.nn.Module): model to validate.
         data (DataLoader): dataloader of validation data.
         device (torch.device): device for running operations.
+        word2_idx (dict): dictionary to convert words to indexes.
+        idx2_word (dict): dictionary to convert indexes to words.
 
     Returns:
         np.ndarray: predictions of the model.

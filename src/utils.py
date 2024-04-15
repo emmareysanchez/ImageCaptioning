@@ -1,7 +1,6 @@
 # deep learning libraries
 import torch
 import numpy as np
-from torch.jit import RecursiveScriptModule
 
 # other libraries
 import os
@@ -17,10 +16,11 @@ from nltk.translate.meteor_score import meteor_score
 
 # Libraries for data processing
 from torch.utils.data import DataLoader
-from src.data_processing import (download_and_prepare_flickr8k_dataset,
-    divide_captions_flickr8k
+from src.data_processing import (
+    download_and_prepare_dataset,
+    divide_captions
 )
-from src.data import CollateFn, Flickr8kDataset
+from src.data import CollateFn, ImageAndCaptionsDataset
 
 import torchvision.transforms as transforms
 
@@ -55,6 +55,7 @@ def set_seed(seed: int) -> None:
 
 def load_data(
     path: str,
+    dataset_name: str,
     batch_size: int = 64,
     shuffle: bool = False,
     drop_last: bool = True,
@@ -66,6 +67,7 @@ def load_data(
     Args:
 
         path (str): path to the data.
+        dataset_name (str): name of the dataset. It can be 'flickr8k' or 'flickr30k'.
         batch_size (int): size of the batch.
         shuffle (bool): whether to shuffle the data.
         drop_last (bool): whether to drop the last batch if it is smaller
@@ -78,11 +80,11 @@ def load_data(
         and index_to_word dictionaries.
     """
     # Download and devide images into train, val and test
-    download_and_prepare_flickr8k_dataset(path)
+    download_and_prepare_dataset(path, dataset_name)
 
     # Load and process captions into txt files
-    captions_path = path + '/flickr8k'
-    divide_captions_flickr8k(captions_path)
+    captions_path = path + '/' + dataset_name
+    divide_captions(captions_path)
 
     transform = transforms.Compose(
         [
@@ -91,16 +93,18 @@ def load_data(
         ]
     )
 
-    train_path_c = f"{path}/flickr8k/captions_train.txt"
-    val_path_c = f"{path}/flickr8k/captions_val.txt"
-    test_path_c = f"{path}/flickr8k/captions_test.txt"
+    train_path_c = f"{path}/{dataset_name}/captions_train.txt"
+    val_path_c = f"{path}/{dataset_name}/captions_val.txt"
+    test_path_c = f"{path}/{dataset_name}/captions_test.txt"
 
-    train_path_i = f"{path}/flickr8k/train"
-    val_path_i = f"{path}/flickr8k/val"
-    test_path_i = f"{path}/flickr8k/test"
+    train_path_i = f"{path}/{dataset_name}/train"
+    val_path_i = f"{path}/{dataset_name}/val"
+    test_path_i = f"{path}/{dataset_name}/test"
 
     # Define the datasets
-    train_dataset = Flickr8kDataset(train_path_c, train_path_i, transform=transform)
+    train_dataset = ImageAndCaptionsDataset(train_path_c,
+                                            train_path_i,
+                                            transform=transform)
 
     # Since we will only consider the words in the train set
     # as vocab we will pass it to the validation and test
@@ -109,8 +113,14 @@ def load_data(
     pad_idx = train_dataset.vocab.word2idx["<PAD>"]
     vocab = train_dataset.vocab
 
-    val_dataset = Flickr8kDataset(val_path_c, val_path_i, transform=transform, vocab=vocab)
-    test_dataset = Flickr8kDataset(test_path_c, test_path_i, transform=transform, vocab=vocab)
+    val_dataset = ImageAndCaptionsDataset(val_path_c,
+                                          val_path_i,
+                                          transform=transform,
+                                          vocab=vocab)
+    test_dataset = ImageAndCaptionsDataset(test_path_c,
+                                           test_path_i,
+                                           transform=transform,
+                                           vocab=vocab)
 
     # Create dataloaders
     train_loader = DataLoader(
@@ -120,7 +130,7 @@ def load_data(
         drop_last=drop_last,
         num_workers=num_workers,
         collate_fn=CollateFn(pad_idx))
-    
+
     val_loader = DataLoader(
         val_dataset,
         batch_size=batch_size,
@@ -128,7 +138,7 @@ def load_data(
         drop_last=drop_last,
         num_workers=num_workers,
         collate_fn=CollateFn(pad_idx))
-    
+
     test_loader = DataLoader(
         test_dataset,
         batch_size=batch_size,
@@ -137,7 +147,8 @@ def load_data(
         num_workers=num_workers,
         collate_fn=CollateFn(pad_idx))
 
-    return train_loader, val_loader, test_loader, vocab.word2idx, vocab.idx2word   # XXX: Lo mismo es mejor devolver solo el vocab
+    # XXX: Lo mismo es mejor devolver solo el vocab
+    return train_loader, val_loader, test_loader, vocab.word2idx, vocab.idx2word
 
 
 def save_checkpoint(
@@ -186,7 +197,8 @@ def load_checkpoint(
         path (str): path to load the checkpoint.
 
     Returns:
-        tuple[int, torch.nn.Module, torch.optim.Optimizer]: epoch number, model and optimizer.
+        tuple[int, torch.nn.Module, torch.optim.Optimizer]: epoch number,
+        model and optimizer.
     """
     # Load the checkpoint
     checkpoint = torch.load(f"{path}/checkpoint.pth")

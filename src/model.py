@@ -26,7 +26,7 @@ class ModifiedInception(nn.Module):
                 param.requires_grad = True
             else:
                 param.requires_grad = False
-        
+
     def forward(self, images: torch.Tensor) -> torch.Tensor:
         """
         Forward pass of the model.
@@ -53,13 +53,13 @@ class DecoderRNN(nn.Module):
     A Decoder RNN that generates captions from image features.
     """
     def __init__(
-        self, 
-        vocab_size: int, 
-        embedding_dim: int, 
-        hidden_dim: int, 
-        num_layers: int, 
-        start_token_index: int, 
-        end_token_index: int, 
+        self,
+        vocab_size: int,
+        embedding_dim: int,
+        hidden_dim: int,
+        num_layers: int,
+        start_token_index: int,
+        end_token_index: int,
         dropout: float = 0.5
     ):
         """
@@ -88,8 +88,10 @@ class DecoderRNN(nn.Module):
         Perform the forward pass.
 
         Args:
-            features (torch.Tensor): The image features extracted by the encoder.
-            captions (torch.Tensor): The batch of captions (as word indices) for the images.
+            features (torch.Tensor): The image features extracted by the
+            encoder.
+            captions (torch.Tensor): The batch of captions (as word indices)
+            for the images.
 
         Returns:
             torch.Tensor: The batch of predicted word indices for the captions.
@@ -116,12 +118,12 @@ class ImageCaptioningModel(nn.Module):
     An Image Captioning Model that combines an encoder and a decoder.
     """
     def __init__(
-        self, 
-        embedding_dim: int, 
-        hidden_dim: int, 
-        vocab_size: int, 
-        num_layers: int, 
-        start_token_index: int, 
+        self,
+        embedding_dim: int,
+        hidden_dim: int,
+        vocab_size: int,
+        num_layers: int,
+        start_token_index: int,
         end_token_index: int
     ):
         """
@@ -143,14 +145,15 @@ class ImageCaptioningModel(nn.Module):
                                   num_layers,
                                   start_token_index,
                                   end_token_index)
-    
+
     def forward(self, images: torch.Tensor, captions: torch.Tensor) -> torch.Tensor:
         """
         Perform the forward pass.
 
         Args:
             images (torch.Tensor): The batch of images.
-            captions (torch.Tensor): The batch of captions (as word indices) for the images.
+            captions (torch.Tensor): The batch of captions (as word indices)
+            for the images.
 
         Returns:
             torch.Tensor: The batch of predicted word indices for the captions.
@@ -158,8 +161,11 @@ class ImageCaptioningModel(nn.Module):
         features = self.encoder(images)
         outputs = self.decoder(features, captions)
         return outputs
-    
-    def generate_caption(self, image: torch.Tensor, idx2word: dict, max_len: int = 50) -> str:
+
+    def generate_caption(self,
+                         image: torch.Tensor,
+                         idx2word: dict,
+                         max_len: int = 50) -> str:
         """
         Generate a caption for a single image.
 

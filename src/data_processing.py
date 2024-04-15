@@ -8,20 +8,24 @@ import shutil
 from PIL import Image
 
 import pandas as pd
-import json
 
 
-
-def download_and_prepare_flickr8k_dataset(path: str) -> None:
+def download_and_prepare_dataset(path: str, dataset_name: str) -> None:
     """
-    Download and prepare the Flickr8k dataset from Kaggle and process it.
+    Download and prepare the Flickr8k or Flickr30k dataset from Kaggle
+    and prepare it for training.
 
     Args:
         path (str): Path to save the processed data.
+        dataset_name (str): Name of the dataset to download. Either
+        "flickr8k" or "flickr30k".
     """
 
     # Kaggle dataset identifier
-    dataset_identifier: str = "adityajn105/flickr8k"
+    if dataset_name == "flickr8k":
+        dataset_identifier: str = "adityajn105/flickr8k"
+    else:
+        dataset_identifier: str = "eeshawn/flickr30k"
 
     # Make sure the kaggle.json file is set up and permissions are correct
     kaggle.api.authenticate()
@@ -30,7 +34,10 @@ def download_and_prepare_flickr8k_dataset(path: str) -> None:
     if not os.path.exists(path):
         os.makedirs(path)
 
-    dataset_path = f"{path}/flickr8k"
+    if dataset_name == "flickr8k":
+        dataset_path = f"{path}/flickr8k"
+    else:
+        dataset_path = f"{path}/flickr30k"
 
     # Download dataset
     # Only download the dataset if it hasn't been downloaded yet
@@ -47,15 +54,19 @@ def download_and_prepare_flickr8k_dataset(path: str) -> None:
         if not os.path.exists(f"{dataset_path}/test"):
             os.makedirs(f"{dataset_path}/test")
 
-
         # For inception dataset
         transform = transforms.Compose(
-        [
-            transforms.Resize((299, 299)),
-        ]
+            [
+                transforms.Resize((299, 299)),
+            ]
         )
 
-        images_list = os.listdir(f"{dataset_path}/Images")
+        if dataset_name == "flickr8k":
+            images_path = f"{dataset_path}/Images"
+        else:
+            images_path = f"{dataset_path}/flickr30k_images"
+
+        images_list = os.listdir(images_path)
 
         # Split into train and validation
         # 80% train, 20% validation
@@ -75,9 +86,6 @@ def download_and_prepare_flickr8k_dataset(path: str) -> None:
             split = list_splits[i]
             list_images = list_class_dirs[i]
 
-            # Adjust according to the actual Flickr8k structure on disk
-            images_path = f"{dataset_path}/Images"
-
             for image_file in list_images:
                 image_path = f"{images_path}/{image_file}"
                 image = Image.open(image_path).convert("RGB")
@@ -89,49 +97,7 @@ def download_and_prepare_flickr8k_dataset(path: str) -> None:
     print("Dataset processed and saved.")
 
 
-def organize_caption_flickr8k(path: str) -> None:
-    """"
-    Organize the captions from the Flickr8k dataset into JSON files for
-    each set.
-
-    Args:
-        path (str): path where the data was downloaded.
-    """
-    # Open the captions.txt file as a DataFrame
-    captions_path = path + "/captions.txt"
-
-    # Separate the images into train, validation and test sets
-    # Only if the images are not already separated
-    if os.path.exists(captions_path):
-        df_captions = pd.read_csv(captions_path, sep=',')
-
-        images_train = os.listdir(path + '/train')
-        images_val = os.listdir(path + '/val')
-        images_test = os.listdir(path + '/test')
-
-        # Filter the captions for each set
-        df_captions_train = df_captions[df_captions['image'].isin(images_train)]
-        df_captions_val = df_captions[df_captions['image'].isin(images_val)]
-        df_captions_test = df_captions[df_captions['image'].isin(images_test)]
-
-        # Create JSON for each set
-        sets = {'train': df_captions_train,
-                'val': df_captions_val,
-                'test': df_captions_test}
-        for set_name, set_captions in sets.items():
-            # Group captions by image and convert to dictionary
-            image_captions = (set_captions.groupby('image')['caption']
-                              .apply(list).to_dict())
-
-            # Write JSON file
-            with open(os.path.join(path, f'captions_{set_name}.json'), 'w') as json_file:
-                json.dump(image_captions, json_file, indent=4)
-
-        # Remove the captions.txt file
-        os.remove(os.path.join(path, 'captions.txt'))
-
-
-def divide_captions_flickr8k(path: str) -> None:
+def divide_captions(path: str) -> None:
     """
     Divides the captions into train, validation and
     test sets. It saves the result in a captions, txt file.
@@ -147,6 +113,12 @@ def divide_captions_flickr8k(path: str) -> None:
     if os.path.exists(captions_path):
 
         df_captions = pd.read_csv(captions_path, sep=',')
+
+        # If it's the Flickr30k dataset, change the column names to match
+        # the Flickr8k dataset
+        if 'image' not in df_captions.columns:
+            df_captions = df_captions.drop(columns=['comment_number'])
+            df_captions.columns = ['image', 'caption']
 
         images_train = os.listdir(path + '/train')
         images_val = os.listdir(path + '/val')
@@ -164,5 +136,5 @@ def divide_captions_flickr8k(path: str) -> None:
 
         # Remove the captions.txt file
         os.remove(os.path.join(path, 'captions.txt'))
-    
+
     print("Captions divided and saved.")

@@ -1,5 +1,5 @@
 # deep learning libraries
-from matplotlib import pyplot as plt
+import matplotlib.pyplot as plt
 import torch
 
 # other libraries
@@ -11,7 +11,6 @@ from src.model import ImageCaptioningModel
 
 # TODO: Import necessary libraries
 from PIL import Image
-import matplotlib.pyplot as plt
 import numpy as np
 import os
 
@@ -54,7 +53,6 @@ def main() -> None:
         word_to_index["</s>"],
     )
 
-
     _, model, _ = load_checkpoint(model, None, "checkpoint")
 
     solution_dir = "solution"
@@ -83,7 +81,7 @@ def main() -> None:
             real_caption = target_caption(targets, index_to_word)
 
             words = caption.split()
-            
+
             # Add \n every 10 words
             caption = ""
             for j, word in enumerate(words):
@@ -94,7 +92,7 @@ def main() -> None:
             # Save image and caption in "solution" folder
             # Will have to create it if necessary
             image = inputs.squeeze(0).cpu().numpy().transpose((1, 2, 0))
-            
+
             image = (image * 255).astype(np.uint8)  # Assuming image was normalized
             image = Image.fromarray(image)
 
