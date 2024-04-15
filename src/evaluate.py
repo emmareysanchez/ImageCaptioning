@@ -18,7 +18,6 @@ from tqdm import tqdm
 
 # static variables
 DATA_PATH: Final[str] = "data"
-NUM_CLASSES: Final[int] = 10
 
 # set device
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
@@ -33,6 +32,7 @@ def main() -> None:
 
     # TODO: Make the evaluation of the model
     # Define hyperparameters
+    dataset_name = "flickr30k"  # "flickr8k" or "flickr30k"
     batch_size = 1
     embedding_size = 256
     hidden_size = 256
@@ -40,7 +40,7 @@ def main() -> None:
 
     # load data
     (_, _, test_loader, word_to_index, index_to_word) = load_data(
-        DATA_PATH, batch_size
+        DATA_PATH, dataset_name, batch_size
     )
 
     # model = MyModel(encoder_params, decoder_params)
