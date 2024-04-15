@@ -20,31 +20,12 @@ class Vocabulary:
         self.idx2word = {0: "<PAD>",
                      1: "<s>",
                      2: "</s>",
-                     3: "<UNK>",
-                     4: "<PERIOD>",
-                     5: "<COMMA>",
-                     6: "<QUOTATION_MARK>",
-                     7: "<SEMICOLON>",
-                     8: "<EXCLAMATION_MARK>",
-                     9: "<QUESTION_MARK>",
-                     10: "<LEFT_PAREN>",
-                     11: "<RIGHT_PAREN>",
-                     12: "<HYPHENS>",
-                     13: "<COLON>"}
+                     3: "<UNK>"}
         self.word2idx = {"<PAD>": 0,
                      "<s>": 1,
                      "</s>": 2,
                      "<UNK>": 3,
-                     "<PERIOD>": 4,
-                     "<COMMA>": 5,
-                     "<QUOTATION_MARK>": 6,
-                     "<SEMICOLON>": 7,
-                     "<EXCLAMATION_MARK>": 8,
-                     "<QUESTION_MARK>": 9,
-                     "<LEFT_PAREN>": 10,
-                     "<RIGHT_PAREN>": 11,
-                     "<HYPHENS>": 12,
-                     "<COLON>": 13}
+                     "<PERIOD>": 4}
         self.freq_threshold = freq_threshold
     
     def __len__(self) -> int:

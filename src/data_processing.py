@@ -164,3 +164,5 @@ def divide_captions_flickr8k(path: str) -> None:
 
         # Remove the captions.txt file
         os.remove(os.path.join(path, 'captions.txt'))
+    
+    print("Captions divided and saved.")
