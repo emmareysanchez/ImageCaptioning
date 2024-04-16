@@ -86,7 +86,7 @@ def val_step(
     # Model in evaluation mode
     model.eval()
 
-    for inputs, targets in val_data:
+    for inputs, targets in tqdm.tqdm(val_data):
 
         inputs = inputs.to(device)
         targets = targets.to(device)

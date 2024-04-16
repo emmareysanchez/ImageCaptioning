@@ -193,7 +193,7 @@ class ImageCaptioningModel(nn.Module):
                 caption.append(predicted.item())
 
                 # If the predicted word is the end token, stop
-                if predicted == vocab.word2idx["<s>"]:
+                if predicted == vocab.word2idx["</s>"]:
                     break
 
                 # Get the embedding of the predicted word
