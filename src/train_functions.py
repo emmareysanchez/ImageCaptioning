@@ -95,14 +95,14 @@ def val_step(
         inputs = inputs.float()
         targets = targets.long()
 
-        # FIXME: implement for more than one caption
-        # generate caption for each target and image
-        caption = model.generate_caption(inputs[0].unsqueeze(0), vocab)
-        print('Caption:', caption)
-        break
+        outputs = model(inputs, targets[:-1])
 
-        # TODO: add error metrics
-        # writer.add_scalar("Loss/val", loss_value.item(), epoch)
+        outputs_reshaped = outputs.reshape(-1, outputs.shape[2])
+        targets_reshaped = targets.reshape(-1)
+
+        loss_value = loss(outputs_reshaped, targets_reshaped)
+
+        writer.add_scalar("Loss/val", loss_value.item(), epoch)
 
 
 @torch.no_grad()
