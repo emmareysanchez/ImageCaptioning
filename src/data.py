@@ -161,8 +161,6 @@ class ImageAndCaptionsDataset(Dataset):
             self.vocab = Vocabulary(freq_threshold=5)
             self.vocab.build_vocabulary(self.captions.tolist())
 
-        print(f"Vocabulary size: {len(self.vocab)}")
-
     def __len__(self):
         """
         Return the length of the dataset.
