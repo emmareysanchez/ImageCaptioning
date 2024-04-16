@@ -57,7 +57,8 @@ def download_and_prepare_dataset(path: str, dataset_name: str) -> None:
         # For inception dataset
         transform = transforms.Compose(
             [
-                transforms.Resize((299, 299)),
+                # transforms.Resize((299, 299)),
+                transforms.Resize((356, 356))
             ]
         )
 

@@ -113,8 +113,14 @@ class Vocabulary:
     def indices_to_caption(self, indices: list) -> str:
         """
         Convert a list of word indices to a caption.
+        Stop when the end token is found.
         """
-        tokens = [self.idx2word.get(index, "<UNK>") for index in indices]
+        # Translate the indices to words and stop when the end token is found
+        tokens = []
+        for idx in indices:
+            tokens.append(self.idx2word[idx])
+            if idx == self.word2idx["</s>"]:
+                break
         return self.untokenizer(tokens)
 
 

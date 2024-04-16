@@ -41,22 +41,20 @@ def main():
 
     # load data
     (train_loader, val_loader, _,
-     word_to_index, index_to_word) = load_data(DATA_PATH, dataset_name, batch_size)
+     vocab) = load_data(DATA_PATH, dataset_name, batch_size)
 
     if need_to_train:
         # model = MyModel(encoder_params, decoder_params)
         model = ImageCaptioningModel(embedding_size,
                                      hidden_size,
-                                     len(index_to_word),
-                                     num_layers,
-                                     word_to_index['<s>'],
-                                     word_to_index['</s>']
+                                     len(vocab),
+                                     num_layers
                                      )
         model.to(device)
 
         # define optimizer and loss ignoring the pad token
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-        loss = torch.nn.CrossEntropyLoss(ignore_index=word_to_index['<PAD>'])
+        loss = torch.nn.CrossEntropyLoss(ignore_index=vocab.word2idx["<PAD>"])
 
         # define tensorboard writer
         writer = SummaryWriter()
@@ -73,9 +71,9 @@ def main():
         # train model showing progress
         for epoch in range(start_epoch, epochs):
             print(f"Epoch {epoch + 1}/{epochs}")
-            # train_step(model, train_loader, loss, optimizer, writer, epoch, device)
+            train_step(model, train_loader, loss, optimizer, writer, epoch, device)
             val_step(model, val_loader, loss, writer, epoch,
-                     device, word_to_index, index_to_word)
+                     device, vocab)
 
             # Save a checkpoint into the checkpoint folder
             save_checkpoint(model, optimizer, epoch, 'checkpoint')

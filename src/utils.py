@@ -24,6 +24,12 @@ from src.data import CollateFn, ImageAndCaptionsDataset
 
 import torchvision.transforms as transforms
 
+# Libraries for visualization
+import matplotlib.pyplot as plt
+from PIL import Image
+
+from src.data import Vocabulary
+
 
 def set_seed(seed: int) -> None:
     """
@@ -60,7 +66,7 @@ def load_data(
     shuffle: bool = False,
     drop_last: bool = True,
     num_workers: int = 2,
-) -> tuple[DataLoader, DataLoader, DataLoader, float, float]:
+) -> tuple[DataLoader, DataLoader, DataLoader, Vocabulary]:
     """
     This function loads the data and preprocesses it.
 
@@ -76,8 +82,8 @@ def load_data(
 
     Returns:
         tuple[DataLoader, DataLoader, DataLoader, dict, dict]: tuple with
-        the training, validation and test dataloaders, and the word_to_index
-        and index_to_word dictionaries.
+        the training, validation and test dataloaders, and the
+        vocabulary of the training set.
     """
     # Download and devide images into train, val and test
     download_and_prepare_dataset(path, dataset_name)
@@ -86,10 +92,21 @@ def load_data(
     captions_path = path + '/' + dataset_name
     divide_captions(captions_path)
 
-    transform = transforms.Compose(
+    transform_train = transforms.Compose(
         [
+            transforms.RandomCrop((299, 299)),
             transforms.ToTensor(),
-            # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                    std=[0.229, 0.224, 0.225])
+        ]
+    )
+
+    transform_val_test = transforms.Compose(
+        [
+            transforms.CenterCrop((299, 299)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                    std=[0.229, 0.224, 0.225])
         ]
     )
 
@@ -104,7 +121,7 @@ def load_data(
     # Define the datasets
     train_dataset = ImageAndCaptionsDataset(train_path_c,
                                             train_path_i,
-                                            transform=transform)
+                                            transform=transform_train)
 
     # Since we will only consider the words in the train set
     # as vocab we will pass it to the validation and test
@@ -115,11 +132,11 @@ def load_data(
 
     val_dataset = ImageAndCaptionsDataset(val_path_c,
                                           val_path_i,
-                                          transform=transform,
+                                          transform=transform_val_test,
                                           vocab=vocab)
     test_dataset = ImageAndCaptionsDataset(test_path_c,
                                            test_path_i,
-                                           transform=transform,
+                                           transform=transform_val_test,
                                            vocab=vocab)
 
     # Create dataloaders
@@ -147,8 +164,7 @@ def load_data(
         num_workers=num_workers,
         collate_fn=CollateFn(pad_idx))
 
-    # XXX: Lo mismo es mejor devolver solo el vocab
-    return train_loader, val_loader, test_loader, vocab.word2idx, vocab.idx2word
+    return train_loader, val_loader, test_loader, vocab
 
 
 def save_checkpoint(
@@ -269,7 +285,7 @@ def calculate_cider(refs: dict, hypo: dict) -> float:
         float: CIDEr score
     """
     cider = Cider()
-    score, scores = cider.compute_score(refs, hypo)
+    score, _ = cider.compute_score(refs, hypo)
     return score
 
 
@@ -295,21 +311,25 @@ def calculate_meteor(reference_captions: List[str], candidate_caption: str) -> f
     return sum(scores) / len(scores)
 
 
-def target_caption(targets, index_to_word):
-    """
-    This function generates the target caption.
+def save_image(inputs,
+               caption,
+               real_caption,
+               folder = "solution",
+               batch_idx = 0,
+               mean = [0.485, 0.456, 0.406],
+               std = [0.229, 0.224, 0.225]):
+    image = inputs.squeeze(0).cpu().numpy().transpose((1, 2, 0))
 
-    Args:
-        targets: The target caption.
-        index_to_word: The index to word mapping.
+    # Denormalize the image
+    image = image * np.array(std) + np.array(mean)
 
-    Returns:
-        str: The target caption.
-    """
-    # Concat the words without the until the </s> and avoiding <s>
-    caption = ""
-    for i in targets[1:]:
-        if index_to_word[i.item()] == "</s>":
-            break
-        caption += index_to_word[i.item()] + " "
-    return caption
+    image = (image * 255).astype(np.uint8)  # Assuming image was normalized
+    image = Image.fromarray(image)
+
+    plt.figure()
+    plt.imshow(image)
+    plt.title(f"Predicted: {caption}\nReal: {real_caption}", fontsize=8)
+    plt.axis('off')
+    plt.tight_layout(pad=3.0)
+    plt.savefig(f"{folder}/image_{batch_idx}.png", dpi=300)
+    plt.close()

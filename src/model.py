@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 from torchvision import models
+from src.data import Vocabulary
 
 
 class ModifiedInception(nn.Module):
@@ -58,8 +59,6 @@ class DecoderRNN(nn.Module):
         embedding_dim: int,
         hidden_dim: int,
         num_layers: int,
-        start_token_index: int,
-        end_token_index: int,
         dropout: float = 0.5
     ):
         """
@@ -80,8 +79,6 @@ class DecoderRNN(nn.Module):
         self.linear = nn.Linear(hidden_dim, vocab_size)
         self.dropout = nn.Dropout(dropout)
         self.vocab_size = vocab_size
-        self.start_token_index = start_token_index  # XXX: ¿Esto se usa??
-        self.end_token_index = end_token_index      # XXX: ¿Esto se usa??
 
     def forward(self, features: torch.Tensor, captions: torch.Tensor) -> torch.Tensor:
         """
@@ -123,8 +120,6 @@ class ImageCaptioningModel(nn.Module):
         hidden_dim: int,
         vocab_size: int,
         num_layers: int,
-        start_token_index: int,
-        end_token_index: int
     ):
         """
         Initialize the Image Captioning Model.
@@ -142,9 +137,7 @@ class ImageCaptioningModel(nn.Module):
         self.decoder = DecoderRNN(vocab_size,
                                   embedding_dim,
                                   hidden_dim,
-                                  num_layers,
-                                  start_token_index,
-                                  end_token_index)
+                                  num_layers)
 
     def forward(self, images: torch.Tensor, captions: torch.Tensor) -> torch.Tensor:
         """
@@ -164,18 +157,18 @@ class ImageCaptioningModel(nn.Module):
 
     def generate_caption(self,
                          image: torch.Tensor,
-                         idx2word: dict,
+                         vocab: Vocabulary,
                          max_len: int = 50) -> str:
         """
         Generate a caption for a single image.
 
         Args:
             image (torch.Tensor): A single image tensor.
-            idx2word (dict): A mapping from word indices to words.
+            vocab (Vocabulary): The Vocabulary object.
             max_len (int): Maximum length for the generated caption.
 
         Returns:
-            str: The generated caption as a string of words.
+            str: The generated caption.
         """
         self.eval()
         caption = []
@@ -200,7 +193,7 @@ class ImageCaptioningModel(nn.Module):
                 caption.append(predicted.item())
 
                 # If the predicted word is the end token, stop
-                if predicted == self.decoder.end_token_index:
+                if predicted == vocab.word2idx["<s>"]:
                     break
 
                 # Get the embedding of the predicted word
@@ -208,4 +201,4 @@ class ImageCaptioningModel(nn.Module):
                 features = self.decoder.embedding(predicted).unsqueeze(0)
 
         # Convert the predicted word indices to words
-        return " ".join([idx2word[token] for token in caption])
+        return vocab.indices_to_caption(caption)

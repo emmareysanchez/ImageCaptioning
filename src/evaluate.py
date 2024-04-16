@@ -6,7 +6,7 @@ import torch
 from typing import Final
 
 # own modules
-from src.utils import set_seed, load_data, load_checkpoint, target_caption
+from src.utils import set_seed, load_data, load_checkpoint, save_image
 from src.model import ImageCaptioningModel
 
 # TODO: Import necessary libraries
@@ -39,7 +39,7 @@ def main() -> None:
     num_layers = 1
 
     # load data
-    (_, _, test_loader, word_to_index, index_to_word) = load_data(
+    (_, _, test_loader, vocab) = load_data(
         DATA_PATH, dataset_name, batch_size
     )
 
@@ -47,10 +47,8 @@ def main() -> None:
     model = ImageCaptioningModel(
         embedding_size,
         hidden_size,
-        len(index_to_word),
-        num_layers,
-        word_to_index["<s>"],
-        word_to_index["</s>"],
+        len(vocab),
+        num_layers
     )
 
     _, model, _ = load_checkpoint(model, None, "checkpoint")
@@ -77,13 +75,14 @@ def main() -> None:
             inputs = inputs.float()
             targets = targets.long()
 
-            real_caption = target_caption(targets, index_to_word)
+            targets = targets.squeeze(1)
+            real_caption = vocab.indices_to_caption(targets.tolist())
 
             if batch_idx % 5 == 0:
 
                 # Only generate the caption ones for the five images
                 # that are the same
-                caption = model.generate_caption(inputs, index_to_word)
+                caption = model.generate_caption(inputs, vocab)
 
                 words = caption.split()
 
@@ -94,22 +93,9 @@ def main() -> None:
                     if j % 10 == 0 and j != 0:
                         caption += "\n"
 
-                # Save image and caption in "solution" folder
-                # Will have to create it if necessary
-                image = inputs.squeeze(0).cpu().numpy().transpose((1, 2, 0))
+                save_image(inputs, caption, real_caption, solution_dir, batch_idx)
 
-                image = (image * 255).astype(np.uint8)  # Assuming image was normalized
-                image = Image.fromarray(image)
-
-                plt.figure()
-                plt.imshow(image)
-                plt.title(f"Predicted: {caption}\nReal: {real_caption}", fontsize=8)
-                plt.axis('off')
-                plt.tight_layout(pad=3.0)
-                plt.savefig(f"{solution_dir}/image_{batch_idx}.png", dpi=300)
-                plt.close()
-
-            # TODO: im
+            # TODO: implementar métricas de error
     print("Evaluation finished.")
 
 if __name__ == "__main__":

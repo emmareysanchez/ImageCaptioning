@@ -6,6 +6,8 @@ from torch.utils.tensorboard import SummaryWriter
 
 import tqdm
 
+from src.data import Vocabulary
+
 
 @torch.enable_grad()
 def train_step(
@@ -65,8 +67,7 @@ def val_step(
     writer: SummaryWriter,
     epoch: int,
     device: torch.device,
-    word2_idx: dict,
-    idx2_word: dict
+    vocab: Vocabulary
 ) -> None:
     """
     This function validate the model.
@@ -96,7 +97,7 @@ def val_step(
 
         # FIXME: implement for more than one caption
         # generate caption for each target and image
-        caption = model.generate_caption(inputs[0].unsqueeze(0), idx2_word)
+        caption = model.generate_caption(inputs[0].unsqueeze(0), vocab)
         print('Caption:', caption)
         break
 
