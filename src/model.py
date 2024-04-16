@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 from torchvision import models
+from torchvision import transforms
 
 
 class ModifiedInception(nn.Module):
@@ -45,6 +46,52 @@ class ModifiedInception(nn.Module):
             features = outputs  # This assumes the default is just the logits or a tensor
 
         # Apply dropout and ReLU to the processed features
+        return self.dropout(self.relu(features))
+    
+    
+class ModifiedResNet(nn.Module):
+    def __init__(self, embedding_dim: int):
+        """
+        Initialize the modified ResNet model.
+
+        Args:
+            embedding_dim (int): The size of the embedding.
+        """
+        super(ModifiedResNet, self).__init__()
+        # Load the pretrained ResNet model
+        resnet = models.resnet34(pretrained=True)
+        # Remove the fully connected layer (fc) to replace with a new one
+        self.features = nn.Sequential(*list(resnet.children())[:-1])
+
+        # New fully connected layer to produce embeddings
+        self.fc = nn.Linear(resnet.fc.in_features, embedding_dim)
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(0.5)
+
+        # Freeze all layers except the newly created fc layer
+        for name, param in self.named_parameters():
+            if "fc.weight" in name or "fc.bias" in name:
+                param.requires_grad = True
+            else:
+                param.requires_grad = False
+
+    def forward(self, images: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass of the model.
+
+        Args:
+            images (torch.Tensor): The input images.
+
+        Returns:
+            torch.Tensor: The extracted features.
+        """
+        # Extract features from the convolutional base
+        features = self.features(images)
+        # Flatten the features
+        features = features.view(features.size(0), -1)
+        # Apply the new fully connected layer
+        features = self.fc(features)
+        # Apply dropout and ReLU
         return self.dropout(self.relu(features))
 
 
@@ -136,7 +183,7 @@ class ImageCaptioningModel(nn.Module):
             end_token_index (int): The index of the end token in the vocabulary.
         """
         super(ImageCaptioningModel, self).__init__()
-        self.encoder = ModifiedInception(embedding_dim)
+        self.encoder = ModifiedResNet(embedding_dim)
         self.decoder = DecoderRNN(vocab_size,
                                   embedding_dim,
                                   hidden_dim,

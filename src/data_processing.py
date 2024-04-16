@@ -51,7 +51,7 @@ def download_and_prepare_flickr8k_dataset(path: str) -> None:
         # For inception dataset
         transform = transforms.Compose(
         [
-            transforms.Resize((299, 299)),
+            transforms.Resize((224, 224)),
         ]
         )
 
