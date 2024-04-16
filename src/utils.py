@@ -63,7 +63,7 @@ def load_data(
     path: str,
     dataset_name: str,
     batch_size: int = 64,
-    shuffle: bool = False,
+    shuffle: bool = True,
     drop_last: bool = True,
     num_workers: int = 0,
 ) -> tuple[DataLoader, DataLoader, DataLoader, Vocabulary]:
@@ -151,7 +151,7 @@ def load_data(
     val_loader = DataLoader(
         val_dataset,
         batch_size=batch_size,
-        shuffle=shuffle,
+        shuffle=False,
         drop_last=drop_last,
         num_workers=num_workers,
         collate_fn=CollateFn(pad_idx))
@@ -159,7 +159,7 @@ def load_data(
     test_loader = DataLoader(
         test_dataset,
         batch_size=batch_size,
-        shuffle=shuffle,
+        shuffle=False,
         drop_last=drop_last,
         num_workers=num_workers,
         collate_fn=CollateFn(pad_idx))
