@@ -43,16 +43,13 @@ def main() -> None:
         DATA_PATH, dataset_name, batch_size
     )
 
-    word2vec = download_embeddings()
-    pretrained_embeddings = vocab.load_pretrained_embeddings(word2vec, embedding_size)
 
     # model = MyModel(encoder_params, decoder_params)
     model = ImageCaptioningModel(
         embedding_size,
         hidden_size,
         len(vocab),
-        num_layers,
-        pretrained_embeddings=pretrained_embeddings,
+        num_layers
     )
 
     _, model, _ = load_checkpoint(model, None, "checkpoint")
