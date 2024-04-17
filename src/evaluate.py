@@ -6,7 +6,7 @@ import torch
 from typing import Final
 
 # own modules
-from src.utils import set_seed, load_data, load_checkpoint, save_image
+from src.utils import set_seed, load_data, load_checkpoint, save_image, calculate_bleu
 from src.model import ImageCaptioningModel
 
 # TODO: Import necessary libraries
@@ -61,6 +61,8 @@ def main() -> None:
     model.eval()
 
     # evaluate model
+    
+    bleu_scores =[]
     with torch.no_grad():
 
         batch_idx = 0
@@ -77,6 +79,11 @@ def main() -> None:
 
             targets = targets.squeeze(1)
             real_caption = vocab.indices_to_caption(targets.tolist())
+            
+            candidate_caption = model.generate_caption(inputs, vocab)
+            bleu_score = calculate_bleu([real_caption], candidate_caption)
+            bleu_scores.append(bleu_score)
+            
 
             if batch_idx % 5 == 0:
 
@@ -96,6 +103,11 @@ def main() -> None:
                 save_image(inputs, caption, real_caption, solution_dir, batch_idx)
 
             # TODO: implementar métricas de error
+        
+        average_bleu_score = sum(bleu_scores) / len(bleu_scores)
+            
+            
+    print(f"Average BLEU score: {average_bleu_score:.4f}")
     print("Evaluation finished.")
 
 if __name__ == "__main__":
