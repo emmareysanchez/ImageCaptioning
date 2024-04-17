@@ -1,7 +1,7 @@
 numpy==1.26.2
 Pillow==10.1.0
 kaggle==1.6.11
-torchvision==0.16.1
+pandas==2.2.2
 tensorboard==2.15.1
 nltk==3.8.1
 rouge==1.0.1

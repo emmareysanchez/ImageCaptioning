@@ -6,6 +6,9 @@ from torch.utils.tensorboard import SummaryWriter
 
 import tqdm
 
+from src.data import Vocabulary
+
+
 @torch.enable_grad()
 def train_step(
     model: torch.nn.Module,
@@ -41,10 +44,6 @@ def train_step(
         inputs = inputs.float()
         targets = targets.long()
 
-
-        # We want them to be (max_len, batch_size)
-        targets = targets.permute(1, 0)
-
         optimizer.zero_grad()
 
         outputs = model(inputs, targets[:-1])
@@ -58,7 +57,6 @@ def train_step(
         optimizer.step()
 
         writer.add_scalar("Loss/train", loss_value.item(), epoch)
-        
 
 
 @torch.no_grad()
@@ -69,8 +67,7 @@ def val_step(
     writer: SummaryWriter,
     epoch: int,
     device: torch.device,
-    word2_idx: dict,
-    idx2_word: dict
+    vocab: Vocabulary
 ) -> None:
     """
     This function validate the model.
@@ -82,12 +79,14 @@ def val_step(
         writer (SummaryWriter): writer for tensorboard.
         epoch (int): epoch of the validation.
         device (torch.device): device for running operations.
+        word2_idx (dict): dictionary to convert words to indexes.
+        idx2_word (dict): dictionary to convert indexes to words.
     """
     model.to(device)
     # Model in evaluation mode
     model.eval()
 
-    for inputs, targets in val_data:
+    for inputs, targets in tqdm.tqdm(val_data):
 
         inputs = inputs.to(device)
         targets = targets.to(device)
@@ -96,14 +95,14 @@ def val_step(
         inputs = inputs.float()
         targets = targets.long()
 
-        # FIXME: implement for more than one caption
-        # generate caption for each target and image
-        caption = model.generate_caption(inputs[0].unsqueeze(0), idx2_word)
-        print('Caption:', caption)
-        break
+        outputs = model(inputs, targets[:-1])
 
-        # TODO: add error metrics
-        # writer.add_scalar("Loss/val", loss_value.item(), epoch)
+        outputs_reshaped = outputs.reshape(-1, outputs.shape[2])
+        targets_reshaped = targets.reshape(-1)
+
+        loss_value = loss(outputs_reshaped, targets_reshaped)
+
+        writer.add_scalar("Loss/val", loss_value.item(), epoch)
 
 
 @torch.no_grad()
@@ -121,6 +120,8 @@ def t_step(
         model (torch.nn.Module): model to validate.
         data (DataLoader): dataloader of validation data.
         device (torch.device): device for running operations.
+        word2_idx (dict): dictionary to convert words to indexes.
+        idx2_word (dict): dictionary to convert indexes to words.
 
     Returns:
         np.ndarray: predictions of the model.
