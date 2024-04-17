@@ -39,17 +39,10 @@ def main() -> None:
     num_layers = 1
 
     # load data
-    (_, _, test_loader, vocab) = load_data(
-        DATA_PATH, dataset_name, batch_size
-    )
+    (_, _, test_loader, vocab) = load_data(DATA_PATH, dataset_name, batch_size)
 
     # model = MyModel(encoder_params, decoder_params)
-    model = ImageCaptioningModel(
-        embedding_size,
-        hidden_size,
-        len(vocab),
-        num_layers
-    )
+    model = ImageCaptioningModel(embedding_size, hidden_size, len(vocab), num_layers)
 
     _, model, _ = load_checkpoint(model, None, "checkpoint")
 
@@ -82,7 +75,7 @@ def main() -> None:
 
                 # Only generate the caption ones for the five images
                 # that are the same
-                caption = model.generate_caption(inputs, vocab)
+                caption = model.generate_caption_beam_search(inputs, vocab)
 
                 words = caption.split()
 
@@ -97,6 +90,7 @@ def main() -> None:
 
             # TODO: implementar métricas de error
     print("Evaluation finished.")
+
 
 if __name__ == "__main__":
     main()

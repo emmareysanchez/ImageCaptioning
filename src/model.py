@@ -188,7 +188,6 @@ class ImageCaptioningModel(nn.Module):
                 hidden, states = self.decoder.lstm(features, states)
                 output = self.decoder.linear(hidden.squeeze(0))
                 predicted = output.argmax(1)
-
                 # Append the predicted word to the caption
                 caption.append(predicted.item())
 
@@ -203,52 +202,11 @@ class ImageCaptioningModel(nn.Module):
         # Convert the predicted word indices to words
         return vocab.indices_to_caption(caption)
 
-    def beam_search(self, beam, branch_factor, max_depth, depth, beam_index):
-        """
-        Perform the process of beam search.
-
-        Args:
-            beam (torch.Tensor): The beam tensor.
-            branch_factor (int): The branch factor.
-            max_depth (int): The maximum depth.
-            depth (int): The current depth.
-            beam_index (int): The current index in the beam tensor.
-
-        Returns:
-            torch.Tensor: The updated beam tensor.
-        """
-        if max_depth == 0:
-            return beam
-
-        for i in range(branch_factor):
-            beam_index += i * (branch_factor ** (max_depth - 1))
-
-            # get features and states
-            for j in range(depth):
-                word = beam[beam_index, j, 0]
-                features = self.encoder.embedding(word).unsqueeze(0)
-                hidden, states = self.decoder.lstm(features, None)
-
-            # get the output and the scores
-            output = self.decoder.linear(hidden.squeeze(0))
-            words, scores = output.topk(branch_factor)
-
-            # update the beam tensor
-            for j in range(branch_factor):
-                beam[beam_index + j, depth, 0] = words[0, j]
-                beam[beam_index + j, depth, 1] = scores[0, j]
-
-            beam = self.beam_search(
-                beam, branch_factor, max_depth - 1, depth + 1, beam_index
-            )
-        return beam
-
     def generate_caption_beam_search(
         self,
         image: torch.Tensor,
         vocab: Vocabulary,
-        branch_factor: int = 4,
-        max_depth: int = 4,
+        beam_size: int = 5,
         max_len: int = 50,
     ) -> str:
         """
@@ -263,50 +221,168 @@ class ImageCaptioningModel(nn.Module):
         Returns:
             str: The generated caption.
         """
+
         self.eval()
-        # hacer un tensor de ceros con el tamaño de (branch factor ^ max_len)xmax_lenx2
-        beam = torch.zeros(branch_factor**max_depth, max_len, 2)
+
+        # Get the features from the image
+        hidden, states = self.decoder.lstm(self.encoder(image).unsqueeze(0), None)
+        output = self.decoder.linear(hidden.squeeze(0))
+        predicted = output.argmax(1)
+
+        # Initialize the beam search variables
+        captions = [[predicted.item()] for _ in range(beam_size)]
+        probabilities = [1 for i in range(beam_size)]
+        features_list = [
+            self.decoder.embedding(predicted).unsqueeze(0) for i in range(beam_size)
+        ]
+        states_list = [states for _ in range(beam_size)]
         with torch.no_grad():
-
-            # Extract features from the image and stablish
-            # the initial state for the lstm as None
-            features = self.encoder(image).unsqueeze(0)
-            states = None
-            # Iterate over the maximum length jumping by the branch factor
-            for i in range(0, max_len, branch_factor):
-                if i == 0:
-                    for j in range(branch_factor):
-                        hidden, states = self.decoder.lstm(features, states)
-                        output = self.decoder.linear(hidden.squeeze(0))
-                        words, scores = output.topk(branch_factor)
-                        beam_index = j * (branch_factor ** (max_depth - 1))
-                        beam[beam_index, 0, 0] = words[0, j]
-                        beam[beam_index, 0, 1] = scores[0, j]
-                else:
-                    # Get the top k predicted captions from the beam
-                    new_beam = torch.zeros(branch_factor**max_depth, max_len, 2)
-                    beam_rank = beam[:, i - 1, 1].argsort(descending=True)
-                    for j in range(branch_factor):
-                        # Get the k best captions and append it to the new beam tensor
-                        beam_index = j * (branch_factor ** (max_depth - 1))
-                        new_beam[beam_index, :i, :] = beam[beam_rank[j], :i, :]
-                    beam = new_beam
-
-                beam = self.beam_search(beam, branch_factor, max_depth, i, 0)
-
-        # Get the best caption from the beam
-        beam_rank = beam[:, -1, 1].argsort(descending=True)
-
-        best_captions = []
-        # Get the k best captions to str
-        for i in range(branch_factor):
-            caption = []
             for j in range(max_len):
-                word = beam[beam_rank[i], j, 0]
-                caption.append(word.item())
-                if word == vocab.word2idx["</s>"]:
-                    break
-            best_captions.append(vocab.indices_to_caption(caption))
-            print(best_captions)
+                new_captions = []
+                new_probabilities = []
+                new_features_list = []
+                new_states_list = []
+                for i in range(beam_size):
+                    hidden, states = self.decoder.lstm(features_list[i], states_list[i])
+                    output = self.decoder.linear(hidden.squeeze(0))
+                    scores, words = output.topk(beam_size)
+                    for k in range(beam_size):
+                        predicted = torch.tensor(
+                            [words[0, k].item()], device=image.device
+                        )
+                        new_captions.append(captions[i] + [predicted.item()])
+                        new_probabilities.append(probabilities[i] * scores[0, k].item())
+                        new_features_list.append(
+                            self.decoder.embedding(predicted).unsqueeze(0)
+                        )
+                        new_states_list.append(states)
+                captions = new_captions
+                probabilities = new_probabilities
+                features_list = new_features_list
+                states_list = new_states_list
+                best_captions = sorted(
+                    list(zip(captions, probabilities)), key=lambda x: x[1], reverse=True
+                )[:beam_size]
+                captions = [x[0] for x in best_captions]
+                probabilities = [x[1] for x in best_captions]
+                features_list = [features_list[i] for i in range(beam_size)]
+                states_list = [states_list[i] for i in range(beam_size)]
 
-        return best_captions[0]
+            # print k captions
+            for i in range(beam_size):
+                print(vocab.indices_to_caption(captions[i]))
+
+            best_caption = captions[0]
+        return vocab.indices_to_caption(best_caption)
+
+    # def beam_search(self, image, beam, branch_factor, max_depth, depth, beam_index):
+    #     """
+    #     Perform the process of beam search.
+
+    #     Args:
+    #         image (torch.Tensor): The image tensor.
+    #         beam (torch.Tensor): The beam tensor.
+    #         branch_factor (int): The branch factor.
+    #         max_depth (int): The maximum depth.
+    #         depth (int): The current depth.
+    #         beam_index (int): The current index in the beam tensor.
+
+    #     Returns:
+    #         torch.Tensor: The updated beam tensor.
+    #     """
+    #     if max_depth == 0:
+    #         return beam
+
+    #     for i in range(branch_factor):
+    #         beam_index += i * (branch_factor ** (max_depth - 1))
+
+    #         # get features and states
+    #         features = self.encoder(image).unsqueeze(0)
+    #         states = None
+    #         features, states = self.decoder.lstm(features, states)
+    #         for j in range(depth):
+    #             word = beam[beam_index, j, 0]
+    #             features = self.encoder.embedding(word).unsqueeze(0)
+    #             hidden, states = self.decoder.lstm(features, states)
+
+    #         # get the output and the scores
+    #         output = self.decoder.linear(hidden.squeeze(0))
+    #         words, scores = output.topk(branch_factor)
+
+    #         # update the beam tensor
+    #         for j in range(branch_factor):
+    #             beam[beam_index + j, depth, 0] = words[0, j]
+    #             beam[beam_index + j, depth, 1] = scores[0, j]
+
+    #         beam = self.beam_search(
+    #             beam, branch_factor, max_depth - 1, depth + 1, beam_index
+    #         )
+    #     return beam
+
+    # def generate_caption_beam_search(
+    #     self,
+    #     image: torch.Tensor,
+    #     vocab: Vocabulary,
+    #     branch_factor: int = 4,
+    #     max_depth: int = 4,
+    #     max_len: int = 50,
+    # ) -> str:
+    #     """
+    #     Generate a caption for a single image using beam search.
+
+    #     Args:
+    #         image (torch.Tensor): A single image tensor.
+    #         vocab (Vocabulary): The Vocabulary object.
+    #         beam_size (int): The size of the beam.
+    #         max_len (int): Maximum length for the generated caption.
+
+    #     Returns:
+    #         str: The generated caption.
+    #     """
+    #     self.eval()
+    #     # hacer un tensor de ceros con el tamaño de (branch factor ^ max_len)xmax_lenx2
+    #     beam = torch.zeros(branch_factor**max_depth, max_len, 2)
+    #     with torch.no_grad():
+
+    #         # Extract features from the image and stablish
+    #         # the initial state for the lstm as None
+    #         features = self.encoder(image).unsqueeze(0)
+    #         states = None
+    #         # Iterate over the maximum length jumping by the branch factor
+    #         for i in range(0, max_len, branch_factor):
+    #             if i == 0:
+    #                 for j in range(branch_factor):
+    #                     hidden, states = self.decoder.lstm(features, states)
+    #                     output = self.decoder.linear(hidden.squeeze(0))
+    #                     words, scores = output.topk(branch_factor)
+    #                     beam_index = j * (branch_factor ** (max_depth - 1))
+    #                     beam[beam_index, 0, 0] = words[0, j]
+    #                     beam[beam_index, 0, 1] = scores[0, j]
+    #             else:
+    #                 # Get the top k predicted captions from the beam
+    #                 new_beam = torch.zeros(branch_factor**max_depth, max_len, 2)
+    #                 beam_rank = beam[:, i - 1, 1].argsort(descending=True)
+    #                 for j in range(branch_factor):
+    #                     # Get the k best captions and append it to the new beam tensor
+    #                     beam_index = j * (branch_factor ** (max_depth - 1))
+    #                     new_beam[beam_index, :i, :] = beam[beam_rank[j], :i, :]
+    #                 beam = new_beam
+
+    #             beam = self.beam_search(image, beam, branch_factor, max_depth, i, 0)
+
+    #     # Get the best caption from the beam
+    #     beam_rank = beam[:, -1, 1].argsort(descending=True)
+
+    #     best_captions = []
+    #     # Get the k best captions to str
+    #     for i in range(branch_factor):
+    #         caption = []
+    #         for j in range(max_len):
+    #             word = beam[beam_rank[i], j, 0]
+    #             caption.append(word.item())
+    #             if word == vocab.word2idx["</s>"]:
+    #                 break
+    #         best_captions.append(vocab.indices_to_caption(caption))
+    #         print(best_captions)
+
+    #     return best_captions[0]
