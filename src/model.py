@@ -43,7 +43,9 @@ class ModifiedInception(nn.Module):
         if self.aux_logits and self.training:
             features = outputs.logits
         else:
-            features = outputs  # This assumes the default is just the logits or a tensor
+            features = (
+                outputs  # This assumes the default is just the logits or a tensor
+            )
 
         # Apply dropout and ReLU to the processed features
         return self.dropout(self.relu(features))
@@ -53,13 +55,14 @@ class DecoderRNN(nn.Module):
     """
     A Decoder RNN that generates captions from image features.
     """
+
     def __init__(
         self,
         vocab_size: int,
         embedding_dim: int,
         hidden_dim: int,
         num_layers: int,
-        dropout: float = 0.5
+        dropout: float = 0.5,
     ):
         """
         Initialize the decoder RNN.
@@ -114,6 +117,7 @@ class ImageCaptioningModel(nn.Module):
     """
     An Image Captioning Model that combines an encoder and a decoder.
     """
+
     def __init__(
         self,
         embedding_dim: int,
@@ -134,10 +138,7 @@ class ImageCaptioningModel(nn.Module):
         """
         super(ImageCaptioningModel, self).__init__()
         self.encoder = ModifiedInception(embedding_dim)
-        self.decoder = DecoderRNN(vocab_size,
-                                  embedding_dim,
-                                  hidden_dim,
-                                  num_layers)
+        self.decoder = DecoderRNN(vocab_size, embedding_dim, hidden_dim, num_layers)
 
     def forward(self, images: torch.Tensor, captions: torch.Tensor) -> torch.Tensor:
         """
@@ -155,10 +156,9 @@ class ImageCaptioningModel(nn.Module):
         outputs = self.decoder(features, captions)
         return outputs
 
-    def generate_caption(self,
-                         image: torch.Tensor,
-                         vocab: Vocabulary,
-                         max_len: int = 50) -> str:
+    def generate_caption(
+        self, image: torch.Tensor, vocab: Vocabulary, max_len: int = 50
+    ) -> str:
         """
         Generate a caption for a single image.
 
@@ -202,3 +202,111 @@ class ImageCaptioningModel(nn.Module):
 
         # Convert the predicted word indices to words
         return vocab.indices_to_caption(caption)
+
+    def beam_search(self, beam, branch_factor, max_depth, depth, beam_index):
+        """
+        Perform the process of beam search.
+
+        Args:
+            beam (torch.Tensor): The beam tensor.
+            branch_factor (int): The branch factor.
+            max_depth (int): The maximum depth.
+            depth (int): The current depth.
+            beam_index (int): The current index in the beam tensor.
+
+        Returns:
+            torch.Tensor: The updated beam tensor.
+        """
+        if max_depth == 0:
+            return beam
+
+        for i in range(branch_factor):
+            beam_index += i * (branch_factor ** (max_depth - 1))
+
+            # get features and states
+            for j in range(depth):
+                word = beam[beam_index, j, 0]
+                features = self.encoder.embedding(word).unsqueeze(0)
+                hidden, states = self.decoder.lstm(features, None)
+
+            # get the output and the scores
+            output = self.decoder.linear(hidden.squeeze(0))
+            words, scores = output.topk(branch_factor)
+
+            # update the beam tensor
+            for j in range(branch_factor):
+                beam[beam_index + j, depth, 0] = words[0, j]
+                beam[beam_index + j, depth, 1] = scores[0, j]
+
+            beam = self.beam_search(
+                beam, branch_factor, max_depth - 1, depth + 1, beam_index
+            )
+        return beam
+
+    def generate_caption_beam_search(
+        self,
+        image: torch.Tensor,
+        vocab: Vocabulary,
+        branch_factor: int = 4,
+        max_depth: int = 4,
+        max_len: int = 50,
+    ) -> str:
+        """
+        Generate a caption for a single image using beam search.
+
+        Args:
+            image (torch.Tensor): A single image tensor.
+            vocab (Vocabulary): The Vocabulary object.
+            beam_size (int): The size of the beam.
+            max_len (int): Maximum length for the generated caption.
+
+        Returns:
+            str: The generated caption.
+        """
+        self.eval()
+        # hacer un tensor de ceros con el tamaño de (branch factor ^ max_len)xmax_lenx2
+        beam = torch.zeros(branch_factor**max_depth, max_len, 2)
+        with torch.no_grad():
+
+            # Extract features from the image and stablish
+            # the initial state for the lstm as None
+            features = self.encoder(image).unsqueeze(0)
+            states = None
+            # Iterate over the maximum length jumping by the branch factor
+            for i in range(0, max_len, branch_factor):
+                if i == 0:
+                    for j in range(branch_factor):
+                        hidden, states = self.decoder.lstm(features, states)
+                        output = self.decoder.linear(hidden.squeeze(0))
+                        words, scores = output.topk(branch_factor)
+                        beam_index = j * (branch_factor ** (max_depth - 1))
+                        beam[beam_index, 0, 0] = words[0, j]
+                        beam[beam_index, 0, 1] = scores[0, j]
+                else:
+                    # Get the top k predicted captions from the beam
+                    new_beam = torch.zeros(branch_factor**max_depth, max_len, 2)
+                    beam_rank = beam[:, i - 1, 1].argsort(descending=True)
+                    for j in range(branch_factor):
+                        # Get the k best captions and append it to the new beam tensor
+                        beam_index = j * (branch_factor ** (max_depth - 1))
+                        new_beam[beam_index, :i, :] = beam[beam_rank[j], :i, :]
+                    beam = new_beam
+
+                beam = self.beam_search(beam, branch_factor, max_depth, i, 0)
+
+        # Get the best caption from the beam
+        beam_rank = beam[:, -1, 1].argsort(descending=True)
+
+        best_captions = []
+        # Get the k best captions to str
+        for i in range(branch_factor):
+            caption = []
+            for j in range(max_len):
+                word = beam[beam_rank[i], j, 0]
+                caption.append(word.item())
+                if word == vocab.word2idx["</s>"]:
+                    break
+            best_captions.append(vocab.indices_to_caption(caption))
+            print(best_captions)
+
+        return best_captions[0]
