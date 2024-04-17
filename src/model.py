@@ -59,7 +59,8 @@ class DecoderRNN(nn.Module):
         embedding_dim: int,
         hidden_dim: int,
         num_layers: int,
-        dropout: float = 0.5
+        dropout: float = 0.5,
+        pretrained_embedding=None,
     ):
         """
         Initialize the decoder RNN.
@@ -74,7 +75,11 @@ class DecoderRNN(nn.Module):
             dropout (float): The dropout rate for regularization.
         """
         super(DecoderRNN, self).__init__()
-        self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        # Load word2vec pretrained embedding
+        if pretrained_embedding:
+            self.embedding = nn.Embedding.from_pretrained(pretrained_embedding)
+        else:
+            self.embedding = nn.Embedding(vocab_size, embedding_dim)
         self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers)
         self.linear = nn.Linear(hidden_dim, vocab_size)
         self.dropout = nn.Dropout(dropout)
@@ -120,6 +125,7 @@ class ImageCaptioningModel(nn.Module):
         hidden_dim: int,
         vocab_size: int,
         num_layers: int,
+        pretrained_embeddings=None,
     ):
         """
         Initialize the Image Captioning Model.
@@ -137,7 +143,8 @@ class ImageCaptioningModel(nn.Module):
         self.decoder = DecoderRNN(vocab_size,
                                   embedding_dim,
                                   hidden_dim,
-                                  num_layers)
+                                  num_layers,
+                                  pretrained_embedding=pretrained_embeddings)
 
     def forward(self, images: torch.Tensor, captions: torch.Tensor) -> torch.Tensor:
         """

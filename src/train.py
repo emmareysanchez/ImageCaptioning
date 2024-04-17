@@ -4,7 +4,7 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 # own modules
-from src.utils import set_seed, save_checkpoint, load_checkpoint, load_data
+from src.utils import set_seed, save_checkpoint, load_checkpoint, load_data, download_embeddings
 from src.train_functions import train_step, val_step
 from src.model import ImageCaptioningModel
 
@@ -33,7 +33,7 @@ def main():
     batch_size = 32
     epochs = 110
     learning_rate = 3e-4
-    embedding_size = 256
+    embedding_size = 300
     hidden_size = 256
     num_layers = 1
 
@@ -42,13 +42,17 @@ def main():
     # load data
     (train_loader, val_loader, _,
      vocab) = load_data(DATA_PATH, dataset_name, batch_size)
+    
+    word2vec = download_embeddings()
+    pretrained_embeddings = vocab.load_pretrained_embeddings(word2vec)
 
     if need_to_train:
         # model = MyModel(encoder_params, decoder_params)
         model = ImageCaptioningModel(embedding_size,
                                      hidden_size,
                                      len(vocab),
-                                     num_layers
+                                     num_layers,
+                                     pretrained_embeddings=pretrained_embeddings
                                      )
         model.to(device)
 

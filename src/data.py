@@ -7,6 +7,8 @@ from torch.nn.utils.rnn import pad_sequence
 from PIL import Image
 
 import pandas as pd
+from gensim.models import KeyedVectors
+import numpy as np
 
 
 class Vocabulary:
@@ -122,6 +124,24 @@ class Vocabulary:
             if idx == self.word2idx["</s>"]:
                 break
         return self.untokenizer(tokens)
+    
+    def load_pretrained_embeddings(self, word2vec: KeyedVectors):
+        """
+        Load the pretrained embeddings from a KeyedVectors object.
+        """
+        embedding_matrix = np.zeros((len(self.word2idx), word2vec.vector_size))
+        for word in self.word2idx:
+            if word in word2vec:
+                embedding_matrix[self.word2idx[word]] = word2vec[word]
+
+            # If not we remove the word from the vocabulary
+            else:
+                idx = self.word2idx[word]
+                del self.word2idx[word]
+                del self.idx2word[idx]
+        pretrained_embeddings = torch.tensor(embedding_matrix)
+        return pretrained_embeddings
+
 
 
 class ImageAndCaptionsDataset(Dataset):
