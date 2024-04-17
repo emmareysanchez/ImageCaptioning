@@ -125,21 +125,26 @@ class Vocabulary:
                 break
         return self.untokenizer(tokens)
     
-    def load_pretrained_embeddings(self, word2vec: KeyedVectors):
+    def load_pretrained_embeddings(self, word2vec: KeyedVectors, embedding_size: int = 300):
         """
         Load the pretrained embeddings from a KeyedVectors object.
         """
-        embedding_matrix = np.zeros((len(self.word2idx), word2vec.vector_size))
+        embedding_matrix = torch.zeros(len(self.word2idx), embedding_size)
         for word in self.word2idx:
             if word in word2vec:
-                embedding_matrix[self.word2idx[word]] = word2vec[word]
+                embedding_matrix[self.word2idx[word]] = torch.from_numpy(word2vec[word])
 
-            # If not we remove the word from the vocabulary
+            # If not we add a random embedding
             else:
-                idx = self.word2idx[word]
-                del self.word2idx[word]
-                del self.idx2word[idx]
+                embedding_new = torch.rand(embedding_size)
+                # Check that the embedding is not does not exist in word2vec
+                # before saving it
+                while embedding_new.tolist() in word2vec.vectors:
+                    embedding_new = torch.rand(embedding_size)
+                embedding_matrix[self.word2idx[word]] = embedding_new
+
         pretrained_embeddings = torch.tensor(embedding_matrix)
+        print('Embeddings loaded.')
         return pretrained_embeddings
 
 

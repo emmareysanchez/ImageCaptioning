@@ -44,7 +44,7 @@ def main():
      vocab) = load_data(DATA_PATH, dataset_name, batch_size)
     
     word2vec = download_embeddings()
-    pretrained_embeddings = vocab.load_pretrained_embeddings(word2vec)
+    pretrained_embeddings = vocab.load_pretrained_embeddings(word2vec, embedding_size)
 
     if need_to_train:
         # model = MyModel(encoder_params, decoder_params)

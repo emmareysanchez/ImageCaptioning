@@ -355,6 +355,8 @@ def download_embeddings():
         with zipfile.ZipFile(output, 'r') as zip_ref:
             zip_ref.extractall('.')
         
-        w2v_model = KeyedVectors.load_word2vec_format("NLP_Data/embeddings/GoogleNews-vectors-negative300.bin.gz",
-                                                      binary=True)
-        return w2v_model
+    w2v_model = KeyedVectors.load_word2vec_format("NLP_Data/embeddings/GoogleNews-vectors-negative300.bin.gz",
+                                                    binary=True)
+
+    print("Embeddings downloaded and saved.")
+    return w2v_model
