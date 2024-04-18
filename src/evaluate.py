@@ -75,7 +75,10 @@ def main() -> None:
 
                 # Only generate the caption ones for the five images
                 # that are the same
+                caption = model.generate_caption(inputs, vocab)
+                print("Caption: ", caption)
                 caption = model.generate_caption_beam_search(inputs, vocab)
+                print("Caption beam search: ", caption)
 
                 words = caption.split()
 
