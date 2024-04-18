@@ -206,7 +206,7 @@ class ImageCaptioningModel(nn.Module):
         self,
         image: torch.Tensor,
         vocab: Vocabulary,
-        beam_size: int = 7,
+        beam_size: int = 20,
         max_len: int = 50,
     ) -> str:
         """
@@ -264,34 +264,40 @@ class ImageCaptioningModel(nn.Module):
 
                 # for each caption in the beam, get the k best captions
                 for i in range(beam_size):
-
                     # if the last word is the end token, stop
-                    # if captions[i][-1] == vocab.word2idx["</s>"]:
-                    #     new_captions.append(captions[i])
-                    #     new_probabilities.append(probabilities[i])
-                    #     new_features_list.append(features_list[i])
-                    #     new_states_list.append(states_list[i])
-                    # else:
-                    # pass the features and the states through the lstm
-                    hidden, states = self.decoder.lstm(features_list[i], states_list[i])
-                    output = self.decoder.linear(hidden.squeeze(0))
-                    probs = torch.nn.functional.softmax(output, dim=1)
-                    scores, words = probs.topk(beam_size)
-
-                    # normalize the scores
-                    scores = scores / scores.sum()
-
-                    # get the k best captions and its probabilities
-                    for k in range(beam_size):
-                        predicted = torch.tensor(
-                            [words[0, k].item()], device=image.device
+                    if captions[i][-1] == vocab.word2idx["</s>"]:
+                        new_captions.append(captions[i])
+                        new_probabilities.append(probabilities[i])
+                        new_features_list.append(features_list[i])
+                        new_states_list.append(states_list[i])
+                    else:
+                        # pass the features and the states through the lstm
+                        hidden, states = self.decoder.lstm(
+                            features_list[i], states_list[i]
                         )
-                        new_probabilities.append(probabilities[i] * scores[0, k].item())
-                        new_captions.append(captions[i] + [predicted.item()])
-                        new_features_list.append(
-                            self.decoder.embedding(predicted).unsqueeze(0)
-                        )
-                        new_states_list.append(states)
+                        output = self.decoder.linear(hidden.squeeze(0))
+                        probs = torch.nn.functional.softmax(output, dim=1)
+                        scores, words = probs.topk(beam_size)
+
+                        # normalize the scores
+                        scores = scores / scores.sum()
+
+                        # get the k best captions and its probabilities
+                        for k in range(beam_size):
+                            predicted = torch.tensor(
+                                [words[0, k].item()], device=image.device
+                            )
+                            new_probabilities.append(
+                                probabilities[i]
+                                * scores[0, k].item()
+                                * (max_len - j)
+                                / max_len
+                            )
+                            new_captions.append(captions[i] + [predicted.item()])
+                            new_features_list.append(
+                                self.decoder.embedding(predicted).unsqueeze(0)
+                            )
+                            new_states_list.append(states)
 
                 # rank the captions by probability and get the k best
                 best_captions = sorted(
