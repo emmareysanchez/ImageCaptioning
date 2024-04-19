@@ -30,6 +30,10 @@ from PIL import Image
 
 from src.data import Vocabulary
 
+import gdown
+import zipfile
+from gensim.models import KeyedVectors
+
 
 def set_seed(seed: int) -> None:
     """
@@ -333,3 +337,26 @@ def save_image(inputs,
     plt.tight_layout(pad=3.0)
     plt.savefig(f"{folder}/image_{batch_idx}.png", dpi=300)
     plt.close()
+
+
+def download_embeddings():
+    # Solo descargar si no existe el archivo
+    if not os.path.exists('NLP_DATA'):
+        # Google Drive direct download link
+        url = 'https://drive.google.com/uc?id=1zQRH1zYBHJ_vU_uMkKvvvwQiZwP5N7wW'
+
+        # Destination file name
+        output = 'NLP_DATA.zip'
+
+        # Download the file
+        gdown.download(url, output, quiet=False)
+
+        # Unzip the downloaded file
+        with zipfile.ZipFile(output, 'r') as zip_ref:
+            zip_ref.extractall('.')
+        
+    w2v_model = KeyedVectors.load_word2vec_format("NLP_Data/embeddings/GoogleNews-vectors-negative300.bin.gz",
+                                                    binary=True)
+
+    print("Embeddings downloaded and saved.")
+    return w2v_model

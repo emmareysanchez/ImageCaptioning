@@ -43,7 +43,9 @@ class ModifiedInception(nn.Module):
         if self.aux_logits and self.training:
             features = outputs.logits
         else:
-            features = outputs  # This assumes the default is just the logits or a tensor
+            features = (
+                outputs  # This assumes the default is just the logits or a tensor
+            )
 
         # Apply dropout and ReLU to the processed features
         return self.dropout(self.relu(features))
@@ -53,13 +55,15 @@ class DecoderRNN(nn.Module):
     """
     A Decoder RNN that generates captions from image features.
     """
+
     def __init__(
         self,
         vocab_size: int,
         embedding_dim: int,
         hidden_dim: int,
         num_layers: int,
-        dropout: float = 0.5
+        dropout: float = 0.5,
+        pretrained_embedding=None,
     ):
         """
         Initialize the decoder RNN.
@@ -74,7 +78,11 @@ class DecoderRNN(nn.Module):
             dropout (float): The dropout rate for regularization.
         """
         super(DecoderRNN, self).__init__()
-        self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        # Load word2vec pretrained embedding
+        if pretrained_embedding is not None:
+            self.embedding = nn.Embedding.from_pretrained(pretrained_embedding)
+        else:
+            self.embedding = nn.Embedding(vocab_size, embedding_dim)
         self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers)
         self.linear = nn.Linear(hidden_dim, vocab_size)
         self.dropout = nn.Dropout(dropout)
@@ -114,12 +122,14 @@ class ImageCaptioningModel(nn.Module):
     """
     An Image Captioning Model that combines an encoder and a decoder.
     """
+
     def __init__(
         self,
         embedding_dim: int,
         hidden_dim: int,
         vocab_size: int,
         num_layers: int,
+        pretrained_embeddings=None,
     ):
         """
         Initialize the Image Captioning Model.
@@ -134,10 +144,13 @@ class ImageCaptioningModel(nn.Module):
         """
         super(ImageCaptioningModel, self).__init__()
         self.encoder = ModifiedInception(embedding_dim)
-        self.decoder = DecoderRNN(vocab_size,
-                                  embedding_dim,
-                                  hidden_dim,
-                                  num_layers)
+        self.decoder = DecoderRNN(
+            vocab_size,
+            embedding_dim,
+            hidden_dim,
+            num_layers,
+            pretrained_embedding=pretrained_embeddings,
+        )
 
     def forward(self, images: torch.Tensor, captions: torch.Tensor) -> torch.Tensor:
         """
@@ -155,10 +168,9 @@ class ImageCaptioningModel(nn.Module):
         outputs = self.decoder(features, captions)
         return outputs
 
-    def generate_caption(self,
-                         image: torch.Tensor,
-                         vocab: Vocabulary,
-                         max_len: int = 50) -> str:
+    def generate_caption(
+        self, image: torch.Tensor, vocab: Vocabulary, max_len: int = 50
+    ) -> str:
         """
         Generate a caption for a single image.
 
@@ -188,7 +200,6 @@ class ImageCaptioningModel(nn.Module):
                 hidden, states = self.decoder.lstm(features, states)
                 output = self.decoder.linear(hidden.squeeze(0))
                 predicted = output.argmax(1)
-
                 # Append the predicted word to the caption
                 caption.append(predicted.item())
 
@@ -202,3 +213,123 @@ class ImageCaptioningModel(nn.Module):
 
         # Convert the predicted word indices to words
         return vocab.indices_to_caption(caption)
+
+    def generate_caption_beam_search(
+        self,
+        image: torch.Tensor,
+        vocab: Vocabulary,
+        beam_size: int = 20,
+        max_len: int = 50,
+    ) -> str:
+        """
+        Generate a caption for a single image using beam search.
+
+        Args:
+            image (torch.Tensor): A single image tensor.
+            vocab (Vocabulary): The Vocabulary object.
+            beam_size (int): The size of the beam.
+            max_len (int): Maximum length for the generated caption.
+
+        Returns:
+            str: The generated caption.
+        """
+
+        self.eval()
+        with torch.no_grad():
+            # Get first word
+            hidden, states = self.decoder.lstm(self.encoder(image).unsqueeze(0), None)
+            output = self.decoder.linear(hidden.squeeze(0))
+            probs = torch.nn.functional.softmax(output, dim=1)
+            predicted = probs.argmax(1)
+
+            # Get next words
+            features = self.decoder.embedding(predicted).unsqueeze(0)
+            hidden, states = self.decoder.lstm(features, states)
+            output = self.decoder.linear(hidden.squeeze(0))
+            probs = torch.nn.functional.softmax(output, dim=1)
+            scores, words = probs.topk(beam_size)
+
+            # normalize the scores
+            scores = scores / scores.sum()
+
+            # initialize the lists
+            captions = []
+            probabilities = []
+            features_list = []
+            states_list = []
+
+            # get the k best captions
+            for i in range(beam_size):
+                predicted = torch.tensor([words[0, i].item()], device=image.device)
+                probability = scores[0, i].item()
+                captions.append([predicted.item()])
+                probabilities.append(probability)
+                features_list.append(self.decoder.embedding(predicted).unsqueeze(0))
+                states_list.append(states)
+
+            for j in range(2, max_len):
+                # initialize the lists
+                new_captions = []
+                new_probabilities = []
+                new_features_list = []
+                new_states_list = []
+
+                # for each caption in the beam, get the k best captions
+                for i in range(beam_size):
+                    # if the last word is the end token, stop
+                    if captions[i][-1] == vocab.word2idx["</s>"]:
+                        new_captions.append(captions[i])
+                        new_probabilities.append(probabilities[i])
+                        new_features_list.append(features_list[i])
+                        new_states_list.append(states_list[i])
+                    else:
+                        # pass the features and the states through the lstm
+                        hidden, states = self.decoder.lstm(
+                            features_list[i], states_list[i]
+                        )
+                        output = self.decoder.linear(hidden.squeeze(0))
+                        probs = torch.nn.functional.softmax(output, dim=1)
+                        scores, words = probs.topk(beam_size)
+
+                        # normalize the scores
+                        scores = scores / scores.sum()
+
+                        # get the k best captions and its probabilities
+                        for k in range(beam_size):
+                            predicted = torch.tensor(
+                                [words[0, k].item()], device=image.device
+                            )
+                            new_probabilities.append(
+                                probabilities[i]
+                                * scores[0, k].item()
+                                * (max_len - j)
+                                / max_len
+                            )
+                            new_captions.append(captions[i] + [predicted.item()])
+                            new_features_list.append(
+                                self.decoder.embedding(predicted).unsqueeze(0)
+                            )
+                            new_states_list.append(states)
+
+                # rank the captions by probability and get the k best
+                best_captions = sorted(
+                    list(
+                        zip(
+                            new_captions,
+                            new_probabilities,
+                            new_features_list,
+                            new_states_list,
+                        )
+                    ),
+                    key=lambda x: x[1],
+                    reverse=True,
+                )[:beam_size]
+                captions = [x[0] for x in best_captions]
+                probabilities = [x[1] for x in best_captions]
+                features_list = [x[2] for x in best_captions]
+                states_list = [x[3] for x in best_captions]
+
+                # normalize the probabilities
+                probabilities = [p / sum(probabilities) for p in probabilities]
+
+        return vocab.indices_to_caption(captions[0])
