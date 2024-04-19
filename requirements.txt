@@ -6,3 +6,4 @@ tensorboard==2.15.1
 nltk==3.8.1
 rouge==1.0.1
 pycocoevalcap==1.2
+gensim==4.3.2

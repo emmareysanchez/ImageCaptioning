@@ -6,7 +6,7 @@ import torch
 from typing import Final
 
 # own modules
-from src.utils import set_seed, load_data, load_checkpoint, save_image
+from src.utils import set_seed, load_data, load_checkpoint, save_image, download_embeddings
 from src.model import ImageCaptioningModel
 
 # TODO: Import necessary libraries
@@ -34,12 +34,13 @@ def main() -> None:
     # Define hyperparameters
     dataset_name = "flickr30k"  # "flickr8k" or "flickr30k"
     batch_size = 1
-    embedding_size = 256
+    embedding_size = 300
     hidden_size = 256
     num_layers = 1
 
     # load data
     (_, _, test_loader, vocab) = load_data(DATA_PATH, dataset_name, batch_size)
+
 
     # model = MyModel(encoder_params, decoder_params)
     model = ImageCaptioningModel(embedding_size, hidden_size, len(vocab), num_layers)
