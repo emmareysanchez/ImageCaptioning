@@ -6,13 +6,14 @@ import torch
 from typing import Final
 
 # own modules
-from src.utils import set_seed, load_data, load_checkpoint, save_image, calculate_bleu
+from src.utils import set_seed, load_data, load_checkpoint, save_image, calculate_bleu, calculate_cider
 from src.model import ImageCaptioningModel
 
 # TODO: Import necessary libraries
 from PIL import Image
 import numpy as np
 import os
+from collections import defaultdict
 
 from tqdm import tqdm
 
@@ -66,6 +67,7 @@ def main() -> None:
     with torch.no_grad():
 
         batch_idx = 0
+        bleu_for_img = 0
 
         for inputs, targets in tqdm(test_loader):
 
@@ -80,10 +82,12 @@ def main() -> None:
             targets = targets.squeeze(1)
             real_caption = vocab.indices_to_caption(targets.tolist())
             
-            candidate_caption = model.generate_caption(inputs, vocab)
-            bleu_score = calculate_bleu([real_caption], candidate_caption)
-            bleu_scores.append(bleu_score)
-            
+            refs = defaultdict(list)
+            hypos = {}
+         
+            img_id = f'image_{batch_idx}'
+            refs[img_id].append(real_caption)
+            hypos[img_id] = caption
 
             if batch_idx % 5 == 0:
 
@@ -99,15 +103,27 @@ def main() -> None:
                     caption += word + " "
                     if j % 10 == 0 and j != 0:
                         caption += "\n"
+                        
+                
 
                 save_image(inputs, caption, real_caption, solution_dir, batch_idx)
 
             # TODO: implementar métricas de error
+            cider_score = calculate_cider(refs, hypos)
+            bleu_score = calculate_bleu([real_caption], caption)
+            if bleu_score > bleu_for_img:
+                bleu_for_img = bleu_score
+            
+            if batch_idx % 5 == 4:
+                bleu_scores.append(bleu_for_img)
+                bleu_for_img = 0
+            # bleu_scores.append(bleu_score)
         
         average_bleu_score = sum(bleu_scores) / len(bleu_scores)
             
             
     print(f"Average BLEU score: {average_bleu_score:.4f}")
+    print(f"CIDEr score: {cider_score:.4f}")
     print("Evaluation finished.")
 
 if __name__ == "__main__":
