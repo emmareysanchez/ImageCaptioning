@@ -132,7 +132,7 @@ class Vocabulary:
         embedding_matrix = torch.zeros(len(self.word2idx), embedding_size)
         for word in self.word2idx:
             if word in word2vec:
-                embedding_matrix[self.word2idx[word]] = torch.from_numpy(word2vec[word]
+                embedding_matrix[self.word2idx[word]] = torch.from_numpy(word2vec[word])
 
             # If not we add a random embedding
             else:
