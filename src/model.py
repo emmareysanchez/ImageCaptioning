@@ -94,7 +94,7 @@ class DecoderRNN(nn.Module):
 
         # Load word2vec pretrained embedding
         if pretrained_embedding is not None:
-            self.embedding = nn.Embedding.from_pretrained(pretrained_embedding)
+            self.embedding = nn.Embedding.from_pretrained(pretrained_embedding, freeze=True)
         else:
             self.embedding = nn.Embedding(vocab_size, embedding_dim)
 
@@ -104,7 +104,6 @@ class DecoderRNN(nn.Module):
         # Linear layer to get the predicted word scores and
         # the dropout layer to avoid overfitting
         self.linear = nn.Linear(hidden_dim, vocab_size)
-        self.dropout = nn.Dropout(dropout)
 
         # Save the vocab size
         self.vocab_size = vocab_size
@@ -123,9 +122,9 @@ class DecoderRNN(nn.Module):
             torch.Tensor: The batch of predicted word indices for the captions.
         """
 
-        # Get the embeddings for the captions applying dropout
+        # Get the embeddings for the captions
         # to avoid overfitting
-        embed = self.dropout(self.embedding(captions))
+        embed = self.embedding(captions)
 
         # Add the image features to the caption embeddings like if they
         # were the first word in the sequence
