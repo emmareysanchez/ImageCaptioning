@@ -1,32 +1,34 @@
-# deep learning libraries
-import matplotlib.pyplot as plt
+# Deep learning libraries
 import torch
 
-# other libraries
+# Other libraries
 from typing import Final
-
-# own modules
-from src.utils import set_seed, load_data, load_checkpoint, save_image, calculate_bleu, calculate_cider, download_embeddings
-from src.model import ImageCaptioningModel
-
-from PIL import Image
-import numpy as np
 import os
 from collections import defaultdict
-
 from tqdm import tqdm
 import json
 
-# static variables
-DATA_PATH: Final[str] = "data"
+# Own modules
+from src.utils import (set_seed,
+                       load_data,
+                       load_checkpoint,
+                       save_image,
+                       calculate_bleu,
+                       calculate_cider)
+from src.model import ImageCaptioningModel
 
-# set device
+
+# Set device
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 set_seed(42)
 
+# Static variables
+DATA_PATH: Final[str] = "data"
+
 # Other global variables
-debug = True # If true it will print the captions generated
-beam = True # The captions will be generated using beam search
+debug = True  # If true it will print the captions generated
+beam = True  # The captions will be generated using beam search
+
 
 def main() -> None:
     """
@@ -48,11 +50,13 @@ def main() -> None:
     # load data
     (_, _, test_loader, vocab) = load_data(DATA_PATH, dataset_name, batch_size)
 
-
     # model = MyModel(encoder_params, decoder_params)
-    model = ImageCaptioningModel(embedding_size, hidden_size, len(vocab), num_layers)
+    model_type = ImageCaptioningModel(embedding_size,
+                                      hidden_size,
+                                      len(vocab),
+                                      num_layers)
 
-    _, model, _ = load_checkpoint(model, None, "checkpoint")
+    _, model, _ = load_checkpoint(model_type, None, "checkpoint")
 
     # If the captions are not generated, generate them
     if not os.path.exists(captions_dir):
@@ -114,13 +118,13 @@ def main() -> None:
 
                     hypos[img_id].append(caption)
                     save_image(inputs, caption, real_caption, solution_dir, batch_idx)
-                
+
                 batch_idx += 1
 
         # Compute metrics
         average_bleu_score = calculate_bleu(refs, hypos)
-        cider_score = calculate_cider(refs, hypos)  
-                
+        cider_score = calculate_cider(refs, hypos)
+
         print(f"Average BLEU score: {average_bleu_score:.4f}")
         print(f"CIDEr score: {cider_score:.4f}")
         print("Evaluation finished.")
@@ -130,10 +134,10 @@ def main() -> None:
 
         with open(f"{captions_dir}/hypo.json", "w") as f:
             json.dump(hypos, f)
-        
+
         with open(f"{captions_dir}/refs.json", "w") as f:
             json.dump(refs, f)
-    
+
     else:
 
         # Load the hypo and refs for the captions
@@ -142,7 +146,7 @@ def main() -> None:
 
         with open(f"{captions_dir}/hypo.json", "r") as f:
             hypos = json.load(f)
-        
+
         with open(f"{captions_dir}/refs.json", "r") as f:
             refs = json.load(f)
 
@@ -151,7 +155,7 @@ def main() -> None:
 
         print(f"BLEU score: {bleu_score:.4f}")
         print(f"CIDEr score: {cider_score:.4f}")
-        
+
 
 if __name__ == "__main__":
     main()

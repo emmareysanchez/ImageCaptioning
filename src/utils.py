@@ -1,38 +1,33 @@
-# deep learning libraries
+# Deep learning libraries
 import torch
 import numpy as np
+import torchvision.transforms as transforms
 
-# other libraries
+# Libraries for Evaluation
+from nltk.translate.bleu_score import sentence_bleu
+from pycocoevalcap.cider.cider import Cider
+
+# Libraries for Data processing
+from torch.utils.data import DataLoader
+
+# Libraries for Visualization
+import matplotlib.pyplot as plt
+from PIL import Image
+
+# Other libraries
 import os
 import random
+from typing import List, Optional
+import gdown
+import zipfile
+from gensim.models import KeyedVectors
 
-from typing import List
-
-# Libraries for evaluation
-from nltk.translate.bleu_score import sentence_bleu  # , SmoothingFunction
-from rouge import Rouge
-from pycocoevalcap.cider.cider import Cider
-from nltk.translate.meteor_score import meteor_score
-
-# Libraries for data processing
-from torch.utils.data import DataLoader
+# Own modules
 from src.data_processing import (
     download_and_prepare_dataset,
     divide_captions
 )
-from src.data import CollateFn, ImageAndCaptionsDataset
-
-import torchvision.transforms as transforms
-
-# Libraries for visualization
-import matplotlib.pyplot as plt
-from PIL import Image
-
-from src.data import Vocabulary
-
-import gdown
-import zipfile
-from gensim.models import KeyedVectors
+from src.data import CollateFn, ImageAndCaptionsDataset, Vocabulary
 
 
 def set_seed(seed: int) -> None:
@@ -101,7 +96,7 @@ def load_data(
             transforms.RandomCrop((299, 299)),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                    std=[0.229, 0.224, 0.225])
+                                 std=[0.229, 0.224, 0.225])
         ]
     )
 
@@ -110,7 +105,7 @@ def load_data(
             transforms.CenterCrop((299, 299)),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                    std=[0.229, 0.224, 0.225])
+                                 std=[0.229, 0.224, 0.225])
         ]
     )
 
@@ -206,10 +201,10 @@ def save_checkpoint(
 
 def load_checkpoint(
     model: torch.nn.Module,
-    optimizer: torch.optim.Optimizer,
+    optimizer: Optional[torch.optim.Optimizer],
     path: str,
     name: str = "checkpoint",
-) -> tuple[int, torch.nn.Module, torch.optim.Optimizer]:
+) -> tuple[int, torch.nn.Module, Optional[torch.optim.Optimizer]]:
     """
     This function loads a checkpoint of the model and optimizer.
 
@@ -220,8 +215,9 @@ def load_checkpoint(
 
     Returns:
         tuple[int, torch.nn.Module, torch.optim.Optimizer]: epoch number,
-        model and optimizer.
+        model and optimizer / None.
     """
+
     # Load the checkpoint
     checkpoint = torch.load(f"{path}/{name}.pth", map_location="cpu")
 
@@ -253,31 +249,8 @@ def calculate_bleu(refs: dict, hypos: dict) -> float:
             if bleu_score > bleu_for_img:
                 bleu_for_img = bleu_score
         bleu_scores.append(bleu_for_img)
-    
+
     return sum(bleu_scores) / len(bleu_scores)
-
-
-def calculate_rouge(reference_captions: List[str], candidate_caption: str) -> float:
-    """
-    Calculate ROUGE score for a single candidate caption against
-    multiple reference captions.
-
-    Args:
-        reference_captions (List[str]): A list of reference captions.
-        candidate_caption (str): The candidate caption as a string.
-
-    Returns:
-        float: ROUGE score
-    """
-    rouge = Rouge()
-    scores = [rouge.get_scores(candidate_caption, ref)[0] for ref in reference_captions]
-
-    # Example to extract ROUGE-L F1 score: scores[0]['rouge-l']['f']
-    # We return the average ROUGE-L F1 score across all references.
-
-    # Hay más rouges en el diccionario y se puede cambiar el valor de 'l'
-    # por '1', '2', '3'...
-    return sum([score["rouge-l"]["f"] for score in scores]) / len(scores)
 
 
 def calculate_cider(refs: dict, hypo: dict) -> float:
@@ -297,36 +270,26 @@ def calculate_cider(refs: dict, hypo: dict) -> float:
     return score
 
 
-def calculate_meteor(reference_captions: List[str], candidate_caption: str) -> float:
+def save_image(inputs: torch.Tensor,
+               caption: str,
+               real_caption: str,
+               folder: str = "solution",
+               batch_idx: int = 0,
+               mean: List = [0.485, 0.456, 0.406],
+               std: List = [0.229, 0.224, 0.225]):
     """
-    Calculate METEOR score for a single candidate caption against
-    multiple reference captions.
+    This function saves an image with the caption predicted by the model.
 
     Args:
-        reference_captions (List[str]): A list of reference captions.
-        candidate_caption (str): The candidate caption as a string.
-
-    Returns:
-        float: METEOR score
+        inputs (torch.Tensor): input image.
+        caption (str): predicted caption.
+        real_caption (str): real caption.
+        folder (str): folder to save the image.
+        batch_idx (int): batch index.
+        mean (list): mean of the image.
+        std (list): standard deviation of the image.
     """
-    # NLTK's meteor_score function takes a list of reference captions and a candidate
-    # caption, both must be strings.
 
-    # The function calculates the METEOR score for each reference separately and returns
-    # the highest score.
-    scores = [meteor_score([ref], candidate_caption) for ref in reference_captions]
-    # In this case, we return the average METEOR score across all references.
-    return sum(scores) / len(scores)
-
-
-def save_image(inputs,
-               caption,
-               real_caption,
-               folder = "solution",
-               batch_idx = 0,
-               mean = [0.485, 0.456, 0.406],
-               std = [0.229, 0.224, 0.225]):
-    
     words = caption.split()
 
     # Add \n every 10 words
@@ -353,9 +316,18 @@ def save_image(inputs,
     plt.close()
 
 
-def download_embeddings():
+def download_embeddings() -> KeyedVectors:
+    """
+    This function downloads the embeddings from Google Drive
+    and saves them in the NLP_DATA folder.
+
+    Returns:
+        KeyedVectors: word2vec model.
+    """
+
     # Solo descargar si no existe el archivo
     if not os.path.exists('NLP_DATA'):
+
         # Google Drive direct download link
         url = 'https://drive.google.com/uc?id=1zQRH1zYBHJ_vU_uMkKvvvwQiZwP5N7wW'
 
@@ -367,10 +339,19 @@ def download_embeddings():
 
         # Unzip the downloaded file
         with zipfile.ZipFile(output, 'r') as zip_ref:
-            zip_ref.extractall('.')
-        
-    w2v_model = KeyedVectors.load_word2vec_format("NLP_Data/embeddings/GoogleNews-vectors-negative300.bin.gz",
-                                                    binary=True)
+            # zip_ref.extractall('.')
+            # Only extract the embeddings folder
+            for file in zip_ref.namelist():
+                if 'embeddings' in file:
+                    zip_ref.extract(file)
+
+        # Remove the zip file
+        os.remove(output)
+
+    print("Creating the word2vec model.")
+    path = "NLP_DATA/embeddings/GoogleNews-vectors-negative300.bin.gz"
+    w2v_model = KeyedVectors.load_word2vec_format(path,
+                                                  binary=True)
 
     print("Embeddings downloaded and saved.")
     return w2v_model

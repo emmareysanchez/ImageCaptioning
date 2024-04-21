@@ -1,12 +1,9 @@
 # deep learning libraries
 import torch
-import numpy as np
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
 import tqdm
-
-from src.data import Vocabulary
 
 
 @torch.enable_grad()
@@ -31,9 +28,15 @@ def train_step(
         epoch (int): epoch of the training.
         device (torch.device): device for running operations.
     """
+
+    # Model to device
     model.to(device)
+
     # Model in training mode
     model.train()
+
+    # Lists to store losses
+    losses_train = []
 
     for _, inputs, targets in tqdm.tqdm(train_data):
 
@@ -48,6 +51,7 @@ def train_step(
 
         outputs = model(inputs, targets[:-1])
 
+        # Reshape outputs and targets to calculate the loss
         outputs_reshaped = outputs.reshape(-1, outputs.shape[2])
         targets_reshaped = targets.reshape(-1)
 
@@ -56,7 +60,10 @@ def train_step(
         loss_value.backward()
         optimizer.step()
 
-        writer.add_scalar("Loss/train", loss_value.item(), epoch)
+        losses_train.append(loss_value.item())
+
+    loss_mean = sum(losses_train) / len(losses_train)
+    writer.add_scalar("Loss/train", loss_mean, epoch)
 
 
 @torch.no_grad()
@@ -66,8 +73,7 @@ def val_step(
     loss: torch.nn.Module,
     writer: SummaryWriter,
     epoch: int,
-    device: torch.device,
-    vocab: Vocabulary
+    device: torch.device
 ) -> None:
     """
     This function validate the model.
@@ -79,12 +85,16 @@ def val_step(
         writer (SummaryWriter): writer for tensorboard.
         epoch (int): epoch of the validation.
         device (torch.device): device for running operations.
-        word2_idx (dict): dictionary to convert words to indexes.
-        idx2_word (dict): dictionary to convert indexes to words.
     """
+
+    # Model to device
     model.to(device)
+
     # Model in evaluation mode
     model.eval()
+
+    # To save the losses
+    losses_val = []
 
     for _, inputs, targets in tqdm.tqdm(val_data):
 
@@ -97,9 +107,13 @@ def val_step(
 
         outputs = model(inputs, targets[:-1])
 
+        # Reshape outputs and targets to calculate the loss
         outputs_reshaped = outputs.reshape(-1, outputs.shape[2])
         targets_reshaped = targets.reshape(-1)
 
         loss_value = loss(outputs_reshaped, targets_reshaped)
 
-        writer.add_scalar("Loss/val", loss_value.item(), epoch)
+        losses_val.append(loss_value.item())
+
+    loss_mean = sum(losses_val) / len(losses_val)
+    writer.add_scalar("Loss/val", loss_mean, epoch)

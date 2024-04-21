@@ -25,7 +25,7 @@ def download_and_prepare_dataset(path: str, dataset_name: str) -> None:
     if dataset_name == "flickr8k":
         dataset_identifier: str = "adityajn105/flickr8k"
     else:
-        dataset_identifier: str = "eeshawn/flickr30k"
+        dataset_identifier = "eeshawn/flickr30k"
 
     # Make sure the kaggle.json file is set up and permissions are correct
     kaggle.api.authenticate()

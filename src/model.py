@@ -1,7 +1,14 @@
+# Deep learning libraries
 import torch
 from torch import nn
 from torchvision import models
+
+# Own modules
 from src.data import Vocabulary
+
+# To filter warnings
+import warnings
+warnings.filterwarnings("ignore")
 
 
 class ModifiedInception(nn.Module):
@@ -14,9 +21,14 @@ class ModifiedInception(nn.Module):
 
         """
         super(ModifiedInception, self).__init__()
+
         # Load the pretrained Inception model
         self.inception = models.inception_v3(pretrained=True, aux_logits=aux_logits)
+
+        # Modify the output layer to fit the embedding size
         self.inception.fc = nn.Linear(self.inception.fc.in_features, embedding_dim)
+
+        # Add a ReLU activation and a dropout layer
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(0.5)
         self.aux_logits = aux_logits
@@ -38,6 +50,7 @@ class ModifiedInception(nn.Module):
         Returns:
             torch.Tensor: The extracted features.
         """
+
         # Directly handle whether to use logits or full outputs
         outputs = self.inception(images)
         if self.aux_logits and self.training:
@@ -78,14 +91,22 @@ class DecoderRNN(nn.Module):
             dropout (float): The dropout rate for regularization.
         """
         super(DecoderRNN, self).__init__()
+
         # Load word2vec pretrained embedding
         if pretrained_embedding is not None:
             self.embedding = nn.Embedding.from_pretrained(pretrained_embedding)
         else:
             self.embedding = nn.Embedding(vocab_size, embedding_dim)
+
+        # LSTM layer
         self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers)
+
+        # Linear layer to get the predicted word scores and
+        # the dropout layer to avoid overfitting
         self.linear = nn.Linear(hidden_dim, vocab_size)
         self.dropout = nn.Dropout(dropout)
+
+        # Save the vocab size
         self.vocab_size = vocab_size
 
     def forward(self, features: torch.Tensor, captions: torch.Tensor) -> torch.Tensor:
@@ -101,6 +122,9 @@ class DecoderRNN(nn.Module):
         Returns:
             torch.Tensor: The batch of predicted word indices for the captions.
         """
+
+        # Get the embeddings for the captions applying dropout
+        # to avoid overfitting
         embed = self.dropout(self.embedding(captions))
 
         # Add the image features to the caption embeddings like if they
@@ -143,6 +167,8 @@ class ImageCaptioningModel(nn.Module):
             end_token_index (int): The index of the end token in the vocabulary.
         """
         super(ImageCaptioningModel, self).__init__()
+
+        # Initialize the encoder and the decoder
         self.encoder = ModifiedInception(embedding_dim)
         self.decoder = DecoderRNN(
             vocab_size,
@@ -164,8 +190,14 @@ class ImageCaptioningModel(nn.Module):
         Returns:
             torch.Tensor: The batch of predicted word indices for the captions.
         """
+
+        # Extract features from the images
         features = self.encoder(images)
+
+        # Pass the features and the captions through the decoder
         outputs = self.decoder(features, captions)
+
+        # Return the predicted word scores
         return outputs
 
     def generate_caption(
@@ -182,8 +214,13 @@ class ImageCaptioningModel(nn.Module):
         Returns:
             str: The generated caption.
         """
+
+        # Model to evaluation mode
         self.eval()
+
+        # Initialize the caption list
         caption = []
+
         with torch.no_grad():
 
             # Extract features from the image and stablish
@@ -197,9 +234,11 @@ class ImageCaptioningModel(nn.Module):
                 # to get the outputs and the new hidden state
                 # and pass the outputs through the linear layer
                 # to get the predicted word scores
+
                 hidden, states = self.decoder.lstm(features, states)
                 output = self.decoder.linear(hidden.squeeze(0))
                 predicted = output.argmax(1)
+
                 # Append the predicted word to the caption
                 caption.append(predicted.item())
 
@@ -236,7 +275,8 @@ class ImageCaptioningModel(nn.Module):
 
         self.eval()
         with torch.no_grad():
-            # Get first word
+
+            # Get first word (start token)
             hidden, states = self.decoder.lstm(self.encoder(image).unsqueeze(0), None)
             output = self.decoder.linear(hidden.squeeze(0))
             probs = torch.nn.functional.softmax(output, dim=1)
@@ -268,6 +308,7 @@ class ImageCaptioningModel(nn.Module):
                 states_list.append(states)
 
             for j in range(2, max_len):
+
                 # initialize the lists
                 new_captions = []
                 new_probabilities = []
@@ -282,6 +323,7 @@ class ImageCaptioningModel(nn.Module):
                         new_probabilities.append(probabilities[i])
                         new_features_list.append(features_list[i])
                         new_states_list.append(states_list[i])
+
                     else:
                         # pass the features and the states through the lstm
                         hidden, states = self.decoder.lstm(

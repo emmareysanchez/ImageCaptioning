@@ -26,3 +26,6 @@ runs/
 *.pth
 *.pt
 models/
+
+# Ignore embeddings
+NLP_Data

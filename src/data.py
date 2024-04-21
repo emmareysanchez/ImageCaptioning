@@ -1,14 +1,16 @@
-# deep learning libraries
+# Deep learning libraries
 import torch
 from torch.utils.data import Dataset
 from torch.nn.utils.rnn import pad_sequence
 
-# other libraries
+# Other libraries
 from PIL import Image
-
 import pandas as pd
 from gensim.models import KeyedVectors
-import numpy as np
+
+# To filter warnings
+import warnings
+warnings.filterwarnings("ignore")
 
 
 class Vocabulary:
@@ -39,7 +41,20 @@ class Vocabulary:
     @staticmethod
     def tokenizer(text: str, extra_tokens: bool = False) -> list:
         """
-        Tokenize the text.
+        Tokenize the text by making the following transformations:
+        1. Lowercase the text.
+        2. Remove quotes.
+        3. Remove the period at the end of the text.
+        4. Remove extra spaces.
+        5. Add start and end tokens.
+        6. Replace some characters with tokens if extra_tokens is True.
+
+        Args:
+            text (str): text to tokenize.
+            extra_tokens (bool): whether to replace some characters with tokens.
+
+        Returns:
+            list: list of tokens.
         """
 
         text = text.lower().replace('"', '').replace("'", '')
@@ -68,8 +83,16 @@ class Vocabulary:
     @staticmethod
     def untokenizer(tokens: list) -> str:
         """
-        Untokenize the tokens.
+        Untokenize the tokens by undoing the transformations
+        made in the tokenizer method.
+
+        Args:
+            tokens (list): list of tokens.
+
+        Returns:
+            str: untokenized text.
         """
+
         text = " ".join(tokens)
         text = text.replace(" <PERIOD> ", ".")
         text = text.replace(" <COMMA> ", ",")
@@ -84,12 +107,19 @@ class Vocabulary:
         text = text.replace(" <COLON> ", ":")
         text = text.replace("<s>", "")
         text = text.replace("</s>", "")
+
         return text
 
-    def build_vocabulary(self, sentences: list):
+    def build_vocabulary(self, sentences: list) -> None:
         """
         Build the vocabulary with the words that appear
         at least `freq_threshold` times in the sentences.
+
+        Args:
+            sentences (list): list of sentences.
+
+        Returns:
+            None
         """
         frequencies = {}
         idx = len(self.idx2word)
@@ -108,7 +138,14 @@ class Vocabulary:
     def caption_to_indices(self, caption: str) -> list:
         """
         Convert a caption to a list of word indices.
+
+        Args:
+            caption (str): caption to convert.
+
+        Returns:
+            list: list of word indices.
         """
+
         tokens = self.tokenizer(caption, extra_tokens=True)
         return [self.word2idx.get(token, self.word2idx["<UNK>"]) for token in tokens]
 
@@ -116,27 +153,50 @@ class Vocabulary:
         """
         Convert a list of word indices to a caption.
         Stop when the end token is found.
+
+        Args:
+            indices (list): list of word indices.
+
+        Returns:
+            str: caption.
         """
+
         # Translate the indices to words and stop when the end token is found
         tokens = []
         for idx in indices:
             tokens.append(self.idx2word[idx])
             if idx == self.word2idx["</s>"]:
                 break
+
         return self.untokenizer(tokens)
-    
-    def load_pretrained_embeddings(self, word2vec: KeyedVectors, embedding_size: int = 300):
+
+    def load_pretrained_embeddings(self,
+                                   word2vec: KeyedVectors,
+                                   embedding_size: int = 300) -> torch.Tensor:
         """
         Load the pretrained embeddings from a KeyedVectors object.
+
+        Args:
+            word2vec (KeyedVectors): object with the pretrained embeddings.
+            embedding_size (int): size of the embeddings.
+
+        Returns:
+            torch.Tensor: tensor with the pretrained embeddings.
         """
+
+        print('Loading embeddings into Vocabulary object.')
         embedding_matrix = torch.zeros(len(self.word2idx), embedding_size)
+
         for word in self.word2idx:
             if word in word2vec:
                 embedding_matrix[self.word2idx[word]] = torch.from_numpy(word2vec[word])
 
             # If not we add a random embedding
             else:
+
+                # Create a random embedding
                 embedding_new = torch.rand(embedding_size)
+
                 # Check that the embedding is not does not exist in word2vec
                 # before saving it
                 while embedding_new.tolist() in word2vec.vectors:
@@ -146,7 +206,6 @@ class Vocabulary:
         pretrained_embeddings = torch.tensor(embedding_matrix)
         print('Embeddings loaded.')
         return pretrained_embeddings
-
 
 
 class ImageAndCaptionsDataset(Dataset):
@@ -161,7 +220,11 @@ class ImageAndCaptionsDataset(Dataset):
         image_names (pd.Series): series with the image names.
         vocab (Vocabulary): vocabulary object.
     """
-    def __init__(self, captions_path: str, images_path: str, transform=None, vocab=None):
+    def __init__(self,
+                 captions_path: str,
+                 images_path: str,
+                 transform=None,
+                 vocab=None) -> None:
         """
         Initialize the ImageAndCaptionsDataset object.
 
@@ -195,7 +258,7 @@ class ImageAndCaptionsDataset(Dataset):
         """
         return len(self.image_names)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int):
         """
         Get the item at the specified index.
 
@@ -248,14 +311,17 @@ class CollateFn:
             tuple: tuple with the names of the images (list with the names
             of the images in the batch), images and the padded captions.
         """
-        images = [item[1].unsqueeze(0) for item in batch]
-        captions = [item[2] for item in batch]
+
+        images_list = [item[1].unsqueeze(0) for item in batch]
+        captions_list = [item[2] for item in batch]
         images_id = [item[0] for item in batch]
 
         # concat the images
-        images = torch.cat(images, dim=0)
+        images = torch.cat(images_list, dim=0)
 
         # pad the captions
-        captions = pad_sequence(captions, batch_first=False, padding_value=self.pad_idx)
+        captions = pad_sequence(captions_list,
+                                batch_first=False,
+                                padding_value=self.pad_idx)
 
         return images_id, images, captions
