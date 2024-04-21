@@ -235,7 +235,7 @@ def calculate_bleu(refs: dict, hypos: dict) -> float:
     multiple reference captions.
 
     Args:
-        reference_captions Dict[str, List[str]]: A list of reference captions.
+        refs Dict[str, List[str]]: A list of reference captions.
         hypos Dict[str, List[str]]: A list of candidate captions.
 
     Returns:
@@ -274,7 +274,7 @@ def save_image(inputs: torch.Tensor,
                caption: str,
                real_caption: str,
                folder: str = "solution",
-               batch_idx: int = 0,
+               name: str = "image",
                mean: List = [0.485, 0.456, 0.406],
                std: List = [0.229, 0.224, 0.225]):
     """
@@ -285,7 +285,7 @@ def save_image(inputs: torch.Tensor,
         caption (str): predicted caption.
         real_caption (str): real caption.
         folder (str): folder to save the image.
-        batch_idx (int): batch index.
+        name (str): name of the image.
         mean (list): mean of the image.
         std (list): standard deviation of the image.
     """
@@ -312,7 +312,7 @@ def save_image(inputs: torch.Tensor,
     plt.title(f"Predicted: {caption}\nReal: {real_caption}", fontsize=8)
     plt.axis('off')
     plt.tight_layout(pad=3.0)
-    plt.savefig(f"{folder}/image_{batch_idx}.png", dpi=300)
+    plt.savefig(f"{folder}/image_{name}.png", dpi=300)
     plt.close()
 
 

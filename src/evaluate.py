@@ -41,17 +41,17 @@ def main() -> None:
     solution_dir = "solution"
 
     # Define hyperparameters
-    batch_size = 1
+    batch_size = 5
     embedding_size = 300
     hidden_size = 256
     num_layers = 1
-    GENERATE_CAPTIONS = True
+    GENERATE_CAPTIONS = False
 
     # load data
     (_, _, test_loader, vocab) = load_data(DATA_PATH,
                                            dataset_name,
                                            batch_size,
-                                           num_workers=0)
+                                           num_workers=2)
 
     # model = MyModel(encoder_params, decoder_params)
     model_type = ImageCaptioningModel(embedding_size,
@@ -92,17 +92,26 @@ def main() -> None:
                 targets = targets.long()
 
                 targets = targets.squeeze(1)
-                real_caption = vocab.indices_to_caption(targets.tolist())
 
-                img_id = img_name[0]
-                refs[img_id].append(real_caption)
+                # We print error if the imag_name has more than one unique element
+                if len(set(img_name)) > 1:
+                    print("Error: img_name has more than one unique element")
 
-                # Only generate the caption ones for the five images
-                # that are the same
-                if batch_idx % 5 == 0:
+                else:
+                    img_id = img_name[0]
 
-                    # Compute both the caption and the caption using beam search
-                    # to compare them
+                    # We get the real caption for each target
+                    targets_permuted = targets.permute(1, 0)
+                    for target in targets_permuted:
+                        real_caption = vocab.indices_to_caption(target.tolist())
+                        refs[img_id].append(real_caption)
+
+                    # Since all the images are the same, we only need to use one as
+                    # input to the model
+                    inputs = inputs[0].unsqueeze(0)  # add the batch dimension
+
+                    # Compute both the caption and the caption using
+                    # beam search to compare them
                     if debug:
                         caption = model.generate_caption(inputs, vocab)
                         caption_beam = model.generate_caption_beam_search(inputs, vocab)
@@ -120,7 +129,12 @@ def main() -> None:
                             caption = model.generate_caption(inputs, vocab)
 
                     hypos[img_id].append(caption)
-                    save_image(inputs, caption, real_caption, solution_dir, batch_idx)
+                    name_for_image = img_id.split(".")[0]
+                    save_image(inputs,
+                               caption,
+                               real_caption,
+                               solution_dir,
+                               name_for_image)
 
                 # We save the jsons every 100 images
                 if batch_idx % 100 == 0:
