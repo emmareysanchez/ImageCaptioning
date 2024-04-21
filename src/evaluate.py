@@ -122,6 +122,14 @@ def main() -> None:
                     hypos[img_id].append(caption)
                     save_image(inputs, caption, real_caption, solution_dir, batch_idx)
 
+                # We save the jsons every 100 images
+                if batch_idx % 100 == 0:
+                    with open(f"{captions_dir}/hypo.json", "w") as f:
+                        json.dump(hypos, f)
+
+                    with open(f"{captions_dir}/refs.json", "w") as f:
+                        json.dump(refs, f)
+
                 batch_idx += 1
 
         # Compute metrics
