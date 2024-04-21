@@ -4,7 +4,7 @@ import numpy as np
 import torchvision.transforms as transforms
 
 # Libraries for Evaluation
-from nltk.translate.bleu_score import sentence_bleu
+from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
 from pycocoevalcap.cider.cider import Cider
 
 # Libraries for Data processing
@@ -242,14 +242,26 @@ def calculate_bleu(refs: dict, hypos: dict) -> float:
         float: BLEU score
     """
     bleu_scores = []
-    for img_id in hypos.keys():
-        bleu_for_img = 0
-        for hypo in hypos[img_id]:
-            bleu_score = sentence_bleu(refs[img_id], hypo)
-            if bleu_score > bleu_for_img:
-                bleu_for_img = bleu_score
-        bleu_scores.append(bleu_for_img)
+    smoothing = SmoothingFunction().method4
 
+    for img_id in hypos.keys():
+
+        # The hypos[img_id] is a list with only one element
+        # that is the caption predicted by the model
+        hypo_tokens = hypos[img_id][0].split()
+
+        # The refs[img_id] is a list with possible
+        # descriptions of the image
+        refs_tokens = [ref.split() for ref in refs[img_id]]
+
+        # Calculate the BLEU score for the image
+        bleu_score = sentence_bleu(refs_tokens,
+                                   hypo_tokens,
+                                   smoothing_function=smoothing)
+
+        bleu_scores.append(bleu_score)
+
+    # Return the average BLEU score
     return sum(bleu_scores) / len(bleu_scores)
 
 

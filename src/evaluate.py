@@ -178,8 +178,8 @@ def main() -> None:
         bleu_score = calculate_bleu(refs, hypos)
         cider_score = calculate_cider(refs, hypos)
 
-        print(f"BLEU score: {bleu_score:.4f}")
-        print(f"CIDEr score: {cider_score:.4f}")
+        print(f"BLEU score: {bleu_score}")
+        print(f"CIDEr score: {cider_score}")
 
 
 if __name__ == "__main__":
