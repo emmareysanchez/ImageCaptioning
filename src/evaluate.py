@@ -16,6 +16,7 @@ import os
 from collections import defaultdict
 
 from tqdm import tqdm
+import json
 
 # static variables
 DATA_PATH: Final[str] = "data"
@@ -23,7 +24,6 @@ DATA_PATH: Final[str] = "data"
 # set device
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 set_seed(42)
-
 
 def main() -> None:
     """
@@ -38,6 +38,7 @@ def main() -> None:
     embedding_size = 256
     hidden_size = 256
     num_layers = 1
+    GENERATE_CAPTIONS = True
 
     # load data
     (_, _, test_loader, vocab) = load_data(
@@ -54,77 +55,100 @@ def main() -> None:
 
     _, model, _ = load_checkpoint(model, None, "checkpoint")
 
-    solution_dir = "solution"
-    if not os.path.exists(solution_dir):
-        os.makedirs(solution_dir)
+    captions_dir = "captions"
 
-    model = model.to(device)
-    model.eval()
+    # If the captions are not generated, generate them
+    if not os.path.exists(captions_dir):
+        GENERATE_CAPTIONS = True
+        os.makedirs(captions_dir)
 
-    # evaluate model
-    
-    bleu_scores =[]
-    with torch.no_grad():
+    if GENERATE_CAPTIONS:
 
-        batch_idx = 0
-        bleu_for_img = 0
+        solution_dir = "solution"
+        if not os.path.exists(solution_dir):
+            os.makedirs(solution_dir)
 
-        for inputs, targets in tqdm(test_loader):
+        model = model.to(device)
+        model.eval()
 
-            batch_idx += 1
-            inputs = inputs.to(device)
-            targets = targets.to(device)
+        # evaluate model
+        with torch.no_grad():
 
-            # Inputs must be float
-            inputs = inputs.float()
-            targets = targets.long()
+            batch_idx = 0
 
-            targets = targets.squeeze(1)
-            real_caption = vocab.indices_to_caption(targets.tolist())
-            
             refs = defaultdict(list)
-            hypos = {}
-         
-            img_id = f'image_{batch_idx}'
-            refs[img_id].append(real_caption)
-            hypos[img_id] = caption
+            hypos = defaultdict(list)
 
-            if batch_idx % 5 == 0:
+            for img_name, inputs, targets in tqdm(test_loader):
 
-                # Only generate the caption ones for the five images
-                # that are the same
-                caption = model.generate_caption(inputs, vocab)
+                inputs = inputs.to(device)
+                targets = targets.to(device)
 
-                words = caption.split()
+                # Inputs must be float
+                inputs = inputs.float()
+                targets = targets.long()
 
-                # Add \n every 10 words
-                caption = ""
-                for j, word in enumerate(words):
-                    caption += word + " "
-                    if j % 10 == 0 and j != 0:
-                        caption += "\n"
-                        
+                targets = targets.squeeze(1)
+                real_caption = vocab.indices_to_caption(targets.tolist())
+
+                img_id = img_name[0]
+                refs[img_id].append(real_caption)
+
+                if batch_idx % 5 == 0:
+
+                    # Only generate the caption ones for the five images
+                    # that are the same
+                    caption = model.generate_caption(inputs, vocab)
+
+                    # Add the caption to the hypos
+                    hypos[img_id].append(caption)
+
+                    words = caption.split()
+
+                    # Add \n every 10 words
+                    caption = ""
+                    for j, word in enumerate(words):
+                        caption += word + " "
+                        if j % 10 == 0 and j != 0:
+                            caption += "\n"
+
+                    save_image(inputs, caption, real_caption, solution_dir, batch_idx)
+
+        # Compute metrics
+        average_bleu_score = calculate_bleu(refs, hypos)
+        cider_score = calculate_cider(refs, hypos)  
                 
+        print(f"Average BLEU score: {average_bleu_score:.4f}")
+        print(f"CIDEr score: {cider_score:.4f}")
+        print("Evaluation finished.")
 
-                save_image(inputs, caption, real_caption, solution_dir, batch_idx)
+        # Save the hypo and refs for the captions
+        # as jsons
 
-            # TODO: implementar métricas de error
-            cider_score = calculate_cider(refs, hypos)
-            bleu_score = calculate_bleu([real_caption], caption)
-            if bleu_score > bleu_for_img:
-                bleu_for_img = bleu_score
-            
-            if batch_idx % 5 == 4:
-                bleu_scores.append(bleu_for_img)
-                bleu_for_img = 0
-            # bleu_scores.append(bleu_score)
+        with open(f"{captions_dir}/hypo.json", "w") as f:
+            json.dump(hypos, f)
         
-        average_bleu_score = sum(bleu_scores) / len(bleu_scores)
-            
-            
-    print(f"Average BLEU score: {average_bleu_score:.4f}")
-    print(f"CIDEr score: {cider_score:.4f}")
-    print("Evaluation finished.")
+        with open(f"{captions_dir}/refs.json", "w") as f:
+            json.dump(refs, f)
+    
+    else:
+
+        # Load the hypo and refs for the captions
+        # as jsons and compute BLEU and CIDEr scores
+        # Only if the captions were already generated
+
+        with open(f"{captions_dir}/hypo.json", "r") as f:
+            hypos = json.load(f)
+        
+        with open(f"{captions_dir}/refs.json", "r") as f:
+            refs = json.load(f)
+
+        bleu_score = calculate_bleu(refs, hypos)
+        cider_score = calculate_cider(refs, hypos)
+
+        print(f"BLEU score: {bleu_score:.4f}")
+        print(f"CIDEr score: {cider_score:.4f}")
+        
 
 if __name__ == "__main__":
     main()

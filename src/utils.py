@@ -229,23 +229,28 @@ def load_checkpoint(
     return checkpoint["epoch"], model, optimizer
 
 
-def calculate_bleu(reference_captions: List[str], candidate_caption: str) -> float:
+def calculate_bleu(refs: dict, hypos: dict) -> float:
     """
     Calculate BLEU score for a single candidate caption against
     multiple reference captions.
 
     Args:
-        reference_captions (List[str]): A list of reference captions.
-        candidate_caption (str): The candidate caption as a string.
+        reference_captions Dict[str, List[str]]: A list of reference captions.
+        hypos Dict[str, List[str]]: A list of candidate captions.
 
     Returns:
         float: BLEU score
     """
-    # We tokenize the candidate caption to match the reference captions
-    candidate_caption = candidate_caption.split()
-    reference_captions = [ref.split() for ref in reference_captions]
-
-    return sentence_bleu(reference_captions, candidate_caption)
+    bleu_scores = []
+    for img_id in hypos.keys():
+        bleu_for_img = 0
+        for hypo in hypos[img_id]:
+            bleu_score = sentence_bleu(refs[img_id], hypo)
+            if bleu_score > bleu_for_img:
+                bleu_for_img = bleu_score
+        bleu_scores.append(bleu_for_img)
+    
+    return sum(bleu_scores) / len(bleu_scores)
 
 
 def calculate_rouge(reference_captions: List[str], candidate_caption: str) -> float:
@@ -276,14 +281,13 @@ def calculate_cider(refs: dict, hypo: dict) -> float:
     Calculate CIDEr score for a set of hypotheses against references.
 
     Args:
-        refs (dict): Dictionary of reference captions with image_id as keys
-        and a list of captions as values.
-        hypo (dict): Dictionary of hypothesis captions with image_id as keys
-        and a single caption as value.
+        refs Dict[str, List[str]]: A list of reference captions.
+        hypo Dict[str, List[str]]: A list of candidate captions.
 
     Returns:
         float: CIDEr score
     """
+    # Pass the hypothesis to list
     cider = Cider()
     score, _ = cider.compute_score(refs, hypo)
     return score

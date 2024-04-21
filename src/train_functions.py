@@ -35,7 +35,7 @@ def train_step(
     # Model in training mode
     model.train()
 
-    for inputs, targets in tqdm.tqdm(train_data):
+    for _, inputs, targets in tqdm.tqdm(train_data):
 
         inputs = inputs.to(device)
         targets = targets.to(device)
@@ -86,7 +86,7 @@ def val_step(
     # Model in evaluation mode
     model.eval()
 
-    for inputs, targets in tqdm.tqdm(val_data):
+    for _, inputs, targets in tqdm.tqdm(val_data):
 
         inputs = inputs.to(device)
         targets = targets.to(device)
@@ -103,47 +103,3 @@ def val_step(
         loss_value = loss(outputs_reshaped, targets_reshaped)
 
         writer.add_scalar("Loss/val", loss_value.item(), epoch)
-
-
-@torch.no_grad()
-def t_step(
-    model: torch.nn.Module,
-    data: DataLoader,
-    device: torch.device,
-    word2_idx: dict,
-    idx2_word: dict
-) -> np.ndarray:
-    """
-    This function predict the model.
-
-    Args:
-        model (torch.nn.Module): model to validate.
-        data (DataLoader): dataloader of validation data.
-        device (torch.device): device for running operations.
-        word2_idx (dict): dictionary to convert words to indexes.
-        idx2_word (dict): dictionary to convert indexes to words.
-
-    Returns:
-        np.ndarray: predictions of the model.
-    """
-    model.to(device)
-    # Model in evaluation mode
-    model.eval()
-
-    predictions = []
-
-    for inputs, targets in data:
-
-        inputs = inputs.to(device)
-
-        # Inputs must be float
-        inputs = inputs.float()
-
-        # FIXME: implement for more than one caption
-        # get the captions of the images of the batch
-        captions = model.genera_captions(inputs[0].unsqueeze(0), idx2_word)
-
-        # Add the captions to the list of predictions
-        predictions.extend(captions)
-
-    # TODO: use and implement evaluation metrics to asses the predictions
