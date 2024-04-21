@@ -218,7 +218,7 @@ class ImageAndCaptionsDataset(Dataset):
         caption_ids = self.vocab.caption_to_indices(caption)
         captions_tensor = torch.tensor(caption_ids)
 
-        return image, captions_tensor
+        return image_path, image, captions_tensor
 
 
 class CollateFn:
@@ -245,10 +245,12 @@ class CollateFn:
             batch (list): list of tuples with the images and captions.
 
         Returns:
-            tuple: tuple with the images and the padded captions.
+            tuple: tuple with the names of the images (list with the names
+            of the images in the batch), images and the padded captions.
         """
-        images = [item[0].unsqueeze(0) for item in batch]
-        captions = [item[1] for item in batch]
+        images = [item[1].unsqueeze(0) for item in batch]
+        captions = [item[2] for item in batch]
+        images_id = [item[0] for item in batch]
 
         # concat the images
         images = torch.cat(images, dim=0)
@@ -256,4 +258,4 @@ class CollateFn:
         # pad the captions
         captions = pad_sequence(captions, batch_first=False, padding_value=self.pad_idx)
 
-        return images, captions
+        return images_id, images, captions
