@@ -147,11 +147,13 @@ def main() -> None:
                 batch_idx += 1
 
         # Compute metrics
-        average_bleu_score = calculate_bleu(refs, hypos)
+        bleu_dict = calculate_bleu(refs, hypos)
         cider_score = calculate_cider(refs, hypos)
 
-        print(f"Average BLEU score: {average_bleu_score:.4f}")
-        print(f"CIDEr score: {cider_score:.4f}")
+        for key, value in bleu_dict.items():
+            print(f"BLEU-{key} score: {value}")
+
+        print(f"CIDEr score: {cider_score}")
         print("Evaluation finished.")
 
         # Save the hypo and refs for the captions
@@ -175,10 +177,11 @@ def main() -> None:
         with open(f"{captions_dir}/refs.json", "r") as f:
             refs = json.load(f)
 
-        bleu_score = calculate_bleu(refs, hypos)
+        bleu_dict = calculate_bleu(refs, hypos)
         cider_score = calculate_cider(refs, hypos)
 
-        print(f"BLEU score: {bleu_score}")
+        for key, value in bleu_dict.items():
+            print(f"BLEU-{key} score: {value}")
         print(f"CIDEr score: {cider_score}")
 
 

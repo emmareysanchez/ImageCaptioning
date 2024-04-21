@@ -229,7 +229,7 @@ def load_checkpoint(
     return checkpoint["epoch"], model, optimizer
 
 
-def calculate_bleu(refs: dict, hypos: dict) -> float:
+def calculate_bleu(refs: dict, hypos: dict) -> dict:
     """
     Calculate BLEU score for a single candidate caption against
     multiple reference captions.
@@ -239,10 +239,23 @@ def calculate_bleu(refs: dict, hypos: dict) -> float:
         hypos Dict[str, List[str]]: A list of candidate captions.
 
     Returns:
-        float: BLEU score
+        dict: BLEU score for each n-gram.
     """
-    bleu_scores = []
-    smoothing = SmoothingFunction().method4
+
+    bleu_dict: dict = {'1-gram': [],
+                       '2-gram': [],
+                       '3-gram': [],
+                       '4-gram': []}
+
+    smoothing = SmoothingFunction().method1
+    # smoothing = SmoothingFunction().method7
+
+    weights = {
+            '1-gram': (1, 0, 0, 0),
+            '2-gram': (0.5, 0.5, 0, 0),
+            '3-gram': (0.33, 0.33, 0.33, 0),
+            '4-gram': (0.25, 0.25, 0.25, 0.25)
+        }
 
     for img_id in hypos.keys():
 
@@ -254,15 +267,17 @@ def calculate_bleu(refs: dict, hypos: dict) -> float:
         # descriptions of the image
         refs_tokens = [ref.split() for ref in refs[img_id]]
 
-        # Calculate the BLEU score for the image
-        bleu_score = sentence_bleu(refs_tokens,
-                                   hypo_tokens,
-                                   smoothing_function=smoothing)
+        for key, value in weights.items():
+            bleu = sentence_bleu(refs_tokens,
+                                 hypo_tokens,
+                                 weights=value,
+                                 smoothing_function=smoothing)
+            bleu_dict[key].append(bleu)
 
-        bleu_scores.append(bleu_score)
+    bleu_means = {key: np.mean(value) for key, value in bleu_dict.items()}
 
     # Return the average BLEU score
-    return sum(bleu_scores) / len(bleu_scores)
+    return bleu_means
 
 
 def calculate_cider(refs: dict, hypo: dict) -> float:
