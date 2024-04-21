@@ -16,9 +16,6 @@ __pycache__/
 # Ignore data folder
 data/
 
-# Ignore json
-*.json
-
 # Ignore runs folder
 runs/
 
