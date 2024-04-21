@@ -26,7 +26,7 @@ set_seed(42)
 DATA_PATH: Final[str] = "data"
 
 # Other global variables
-debug = True  # If true it will print the captions generated
+debug = False  # If true it will print the captions generated
 beam = True  # The captions will be generated using beam search
 
 
