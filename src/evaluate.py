@@ -125,10 +125,10 @@ def main() -> None:
                 # We save the jsons every 100 images
                 if batch_idx % 100 == 0:
                     with open(f"{captions_dir}/hypo.json", "w") as f:
-                        json.dump(hypos, f)
+                        json.dump(hypos, f, indent=4)
 
                     with open(f"{captions_dir}/refs.json", "w") as f:
-                        json.dump(refs, f)
+                        json.dump(refs, f, indent=4)
 
                 batch_idx += 1
 
@@ -144,10 +144,10 @@ def main() -> None:
         # as jsons
 
         with open(f"{captions_dir}/hypo.json", "w") as f:
-            json.dump(hypos, f)
+            json.dump(hypos, f, indent=4)
 
         with open(f"{captions_dir}/refs.json", "w") as f:
-            json.dump(refs, f)
+            json.dump(refs, f, indent=4)
 
     else:
 
