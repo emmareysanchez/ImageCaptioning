@@ -91,8 +91,6 @@ def main():
         save_checkpoint(model, optimizer, epochs, "models", "model")
         print("Training finished.")
 
-        # TODO: Implement the test of the model
-
     else:
         # We load the model from the models folder
         _, model, _ = load_checkpoint(model, None, "models", "model")

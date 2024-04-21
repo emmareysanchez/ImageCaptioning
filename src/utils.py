@@ -223,7 +223,7 @@ def load_checkpoint(
         model and optimizer.
     """
     # Load the checkpoint
-    checkpoint = torch.load(f"{path}/{name}.pth")
+    checkpoint = torch.load(f"{path}/{name}.pth", map_location="cpu")
 
     # Load the model and optimizer
     model.load_state_dict(checkpoint["model_state_dict"])
@@ -326,6 +326,16 @@ def save_image(inputs,
                batch_idx = 0,
                mean = [0.485, 0.456, 0.406],
                std = [0.229, 0.224, 0.225]):
+    
+    words = caption.split()
+
+    # Add \n every 10 words
+    caption = ""
+    for j, word in enumerate(words):
+        caption += word + " "
+        if j % 10 == 0 and j != 0:
+            caption += "\n"
+
     image = inputs.squeeze(0).cpu().numpy().transpose((1, 2, 0))
 
     # Denormalize the image

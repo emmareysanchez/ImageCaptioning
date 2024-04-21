@@ -9,7 +9,6 @@ from typing import Final
 from src.utils import set_seed, load_data, load_checkpoint, save_image, calculate_bleu, calculate_cider, download_embeddings
 from src.model import ImageCaptioningModel
 
-# TODO: Import necessary libraries
 from PIL import Image
 import numpy as np
 import os
@@ -25,15 +24,21 @@ DATA_PATH: Final[str] = "data"
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 set_seed(42)
 
+# Other global variables
+debug = True # If true it will print the captions generated
+beam = True # The captions will be generated using beam search
+
 def main() -> None:
     """
     This function is the main program. It loads the data, the model,
     and evaluates it.
     """
 
-    # TODO: Make the evaluation of the model
-    # Define hyperparameters
     dataset_name = "flickr30k"  # "flickr8k" or "flickr30k"
+    captions_dir = "captions"
+    solution_dir = "solution"
+
+    # Define hyperparameters
     batch_size = 1
     embedding_size = 300
     hidden_size = 256
@@ -49,8 +54,6 @@ def main() -> None:
 
     _, model, _ = load_checkpoint(model, None, "checkpoint")
 
-    captions_dir = "captions"
-
     # If the captions are not generated, generate them
     if not os.path.exists(captions_dir):
         GENERATE_CAPTIONS = True
@@ -58,7 +61,6 @@ def main() -> None:
 
     if GENERATE_CAPTIONS:
 
-        solution_dir = "solution"
         if not os.path.exists(solution_dir):
             os.makedirs(solution_dir)
 
@@ -88,29 +90,32 @@ def main() -> None:
                 img_id = img_name[0]
                 refs[img_id].append(real_caption)
 
+                # Only generate the caption ones for the five images
+                # that are the same
                 if batch_idx % 5 == 0:
 
-                    # Only generate the caption ones for the five images
-                    # that are the same
-                    caption = model.generate_caption(inputs, vocab)
+                    # Compute both the caption and the caption using beam search
+                    # to compare them
+                    if debug:
+                        caption = model.generate_caption(inputs, vocab)
+                        caption_beam = model.generate_caption_beam_search(inputs, vocab)
+                        print("\nCaption: ", caption)
+                        print("Caption beam search: ", caption_beam)
 
-                    print("Caption: ", caption)
-                    caption = model.generate_caption_beam_search(inputs, vocab)
-                    print("Caption beam search: ", caption)
+                        if beam:
+                            caption = caption_beam
 
-                    # Add the caption to the hypos
+                    else:
+                        # Add the caption to the hypos
+                        if beam:
+                            caption = model.generate_caption_beam_search(inputs, vocab)
+                        else:
+                            caption = model.generate_caption(inputs, vocab)
+
                     hypos[img_id].append(caption)
-
-                    words = caption.split()
-
-                    # Add \n every 10 words
-                    caption = ""
-                    for j, word in enumerate(words):
-                        caption += word + " "
-                        if j % 10 == 0 and j != 0:
-                            caption += "\n"
-
                     save_image(inputs, caption, real_caption, solution_dir, batch_idx)
+                
+                batch_idx += 1
 
         # Compute metrics
         average_bleu_score = calculate_bleu(refs, hypos)
