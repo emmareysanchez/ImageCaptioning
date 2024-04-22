@@ -1,9 +1,19 @@
-# ProyectoImageCaptioning
+# Image Captioning using CNN-RNN Arquitecture
 
 ## Description
-This project is about the implementation of a model that generates captions for images. The model is based on the paper ["Show, Attend and Tell: Neural Image Caption Generation with Visual Attention"](https://arxiv.org/abs/1502.03044) by Xu et al. (2015).
+This project explores the intersection of deep learning and natural language processing (NLP) by implementing a model that generates captions for images. The model is based on the paper ["Show, Attend and Tell: Neural Image Caption Generation with Visual Attention"](https://arxiv.org/abs/1502.03044) by Xu et al. (2015).
 
 ![Example image](captions/captions.png)
+
+## Table of Contents
+- [Image Captioning using CNN-RNN Arquitecture](#image-captioning-using-cnn-rnn-arquitecture)
+  - [Description](#description)
+  - [Table of Contents](#table-of-contents)
+  - [Models](#models)
+  - [Requirements](#requirements)
+  - [Datasets](#datasets)
+  - [Usage](#usage)
+  - [Files](#files)
 
 ## Models
 The project used a encoder-decoder architecture. The encoder is a CNN model and the decoder is a RNN model. The models used in this project are the following:
