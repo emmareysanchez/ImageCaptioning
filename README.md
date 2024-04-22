@@ -9,20 +9,20 @@ The model is based on a encoder-decoder architecture. The encoder is a pre-train
 In addition, captions can be generated using a greedy aproach or a beam search aproach.
 
 ## Requirements
-numpy==1.26.2
-Pillow==10.1.0
-kaggle==1.6.11
-pandas==2.2.2
-tensorboard==2.15.1
-nltk==3.8.1
-rouge==1.0.1
-pycocoevalcap==1.2
-gensim==4.3.2
-scipy==1.12.0
-gdown==5.1.0
-mypy==1.7.0
-black==23.11.0
-flake8==7.0.0
+- numpy==1.26.2
+- Pillow==10.1.0
+- kaggle==1.6.11
+- pandas==2.2.2
+- tensorboard==2.15.1
+- nltk==3.8.1
+- rouge==1.0.1
+- pycocoevalcap==1.2
+- gensim==4.3.2
+- scipy==1.12.0
+- gdown==5.1.0
+- mypy==1.7.0
+- black==23.11.0
+- flake8==7.0.0
 
 In addition pytorch must be install following the instructions in the official website: https://pytorch.org/get-started/locally/
 
