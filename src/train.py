@@ -23,7 +23,7 @@ DATA_PATH: str = "data"
 CHECKPOINT_PATH: str = "checkpoint"
 
 
-need_to_load = False
+need_to_load = True
 
 
 def main() -> None:
@@ -34,7 +34,7 @@ def main() -> None:
 
     # Define hyperparameters
     dataset_name = "flickr30k"  # "flickr8k" or "flickr30k"
-    batch_size = 32
+    batch_size = 128
     epochs = 110
     learning_rate = 3e-4
     embedding_size = 300
@@ -69,6 +69,12 @@ def main() -> None:
         model.to(device)
 
         if optimizer_loaded is not None:
+            # optimizer_loaded params must be in the same device
+            # as the optimizer
+            for state in optimizer_loaded.state.values():
+                for k, v in state.items():
+                    if isinstance(v, torch.Tensor):
+                        state[k] = v.to(device)
             optimizer = optimizer_loaded
 
         # Define the start epoch

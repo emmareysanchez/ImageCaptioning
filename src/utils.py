@@ -219,7 +219,8 @@ def load_checkpoint(
     """
 
     # Load the checkpoint
-    checkpoint = torch.load(f"{path}/{name}.pth", map_location="cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    checkpoint = torch.load(f"{path}/{name}.pth", map_location=device)
 
     # Load the model and optimizer
     model.load_state_dict(checkpoint["model_state_dict"])
