@@ -94,7 +94,8 @@ class DecoderRNN(nn.Module):
 
         # Load word2vec pretrained embedding
         if pretrained_embedding is not None:
-            self.embedding = nn.Embedding.from_pretrained(pretrained_embedding, freeze=True)
+            self.embedding = nn.Embedding.from_pretrained(pretrained_embedding,
+                                                          freeze=True)
         else:
             self.embedding = nn.Embedding(vocab_size, embedding_dim)
 
