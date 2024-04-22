@@ -45,7 +45,7 @@ def main() -> None:
     embedding_size = 300
     hidden_size = 256
     num_layers = 1
-    GENERATE_CAPTIONS = False
+    GENERATE_CAPTIONS = True
 
     # load data
     (_, _, test_loader, vocab) = load_data(DATA_PATH,

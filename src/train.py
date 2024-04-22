@@ -34,7 +34,7 @@ def main() -> None:
 
     # Define hyperparameters
     dataset_name = "flickr30k"  # "flickr8k" or "flickr30k"
-    batch_size = 128
+    batch_size = 264
     epochs = 110
     learning_rate = 3e-4
     embedding_size = 300
