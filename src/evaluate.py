@@ -51,7 +51,7 @@ def main() -> None:
     (_, _, test_loader, vocab) = load_data(DATA_PATH,
                                            dataset_name,
                                            batch_size,
-                                           num_workers=2)
+                                           num_workers=0)
 
     # model = MyModel(encoder_params, decoder_params)
     model_type = ImageCaptioningModel(embedding_size,
