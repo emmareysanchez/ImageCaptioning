@@ -1,6 +1,7 @@
 # Ignore image files
 *.jpg
 *.png
+!captions/captions.png
 
 # Ignore text files
 *.txt
